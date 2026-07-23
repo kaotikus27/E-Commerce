@@ -1,0 +1,19 @@
+# Frontend (Angular)
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/npm-debug.log
+frontend/.vscode/
+
+# Backend (Maven / Spring Boot)
+backend/target/
+backend/.mvn/
+backend/*.log
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store

@@ -1,0 +1,135 @@
+/* ==========================================================================
+   Global design tokens — Sage & Cream Bakehouse palette (E-Commerce.md spec)
+   ========================================================================== */
+:root {
+  --color-cream: #FAF7F2;
+  --color-white: #FFFFFF;
+  --color-sage: #6B8E23;
+  --color-sage-dark: #557A46;
+  --color-sage-700: #4A6B15;
+  --color-pistachio: #E8EFE6;
+  --color-espresso: #3E2723;
+  --color-charcoal: #2B2B2B;
+  --color-error: #B3261E;
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --shadow-card: 0 2px 10px rgba(43, 43, 43, 0.08);
+  --shadow-elevated: 0 8px 30px rgba(43, 43, 43, 0.16);
+  --touch-target: 48px;
+  --max-content: 1180px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--color-cream);
+  color: var(--color-charcoal);
+  font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+  color: var(--color-espresso);
+  margin: 0 0 0.5em 0;
+  font-weight: 700;
+}
+
+a { color: inherit; text-decoration: none; }
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  min-height: var(--touch-target);
+}
+
+img { max-width: 100%; display: block; }
+
+.container {
+  max-width: var(--max-content);
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0 20px;
+  min-height: var(--touch-target);
+  font-size: 15px;
+  font-weight: 600;
+  transition: transform 0.12s ease, background 0.15s ease, box-shadow .15s ease;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--color-sage); color: var(--color-white); }
+.btn-primary:hover { background: var(--color-sage-dark); }
+.btn-secondary { background: var(--color-white); color: var(--color-espresso); border: 1.5px solid var(--color-espresso); }
+.btn-secondary:hover { background: var(--color-pistachio); }
+.btn-block { width: 100%; }
+.btn-sm { min-height: 40px; padding: 0 14px; font-size: 14px; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Cards */
+.card {
+  background: var(--color-white);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+}
+
+/* Badges / pills */
+.badge {
+  display: inline-block;
+  background: var(--color-pistachio);
+  color: var(--color-sage-700);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+.badge-sale { background: var(--color-espresso); color: var(--color-cream); }
+
+/* Inputs */
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.field label { font-size: 13px; font-weight: 600; color: var(--color-espresso); }
+.field input, .field select, .field textarea {
+  min-height: var(--touch-target);
+  border-radius: var(--radius-sm);
+  border: 1.5px solid #DDD6CC;
+  padding: 0 14px;
+  font-size: 15px;
+  background: var(--color-white);
+  color: var(--color-charcoal);
+}
+.field input:focus, .field select:focus, .field textarea:focus {
+  outline: none;
+  border-color: var(--color-sage);
+}
+
+/* Utility */
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+/* Mobile-first breakpoints helper classes used across feature components */
+.grid-responsive {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+@media (min-width: 640px) {
+  .grid-responsive { grid-template-columns: repeat(3, 1fr); }
+}
+@media (min-width: 960px) {
+  .grid-responsive { grid-template-columns: repeat(4, 1fr); }
+}
