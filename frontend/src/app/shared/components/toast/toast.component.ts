@@ -30,10 +30,10 @@ import { NotificationService } from '../../../core/services/notification.service
     }
     .toast {
       pointer-events: auto;
-      background: var(--color-espresso);
-      color: var(--color-cream);
+      background: var(--color-text-chocolate);
+      color: var(--color-canvas-oat);
       padding: 12px 18px;
-      border-radius: var(--radius-sm);
+      border-radius: var(--radius-md);
       box-shadow: var(--shadow-elevated);
       font-size: 14px;
       font-weight: 600;

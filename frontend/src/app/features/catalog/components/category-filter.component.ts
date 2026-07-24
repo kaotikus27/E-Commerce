@@ -38,12 +38,12 @@ import { Category } from '../../../core/models/product.model';
   styles: [`
     .filter-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
     .chip {
-      background: var(--color-white); border: 1.5px solid var(--color-pistachio); border-radius: 999px;
-      padding: 8px 16px; font-size: 14px; font-weight: 600; min-height: 44px; color: var(--color-charcoal);
+      background: var(--color-white); border: 1.5px solid var(--color-subdued-pistachio); border-radius: var(--radius-pill);
+      padding: 8px 16px; font-size: 14px; font-weight: 600; min-height: 44px; color: var(--color-text-chocolate);
     }
-    .chip.active { background: var(--color-sage); border-color: var(--color-sage); color: white; }
+    .chip.active { background: var(--color-text-chocolate); border-color: var(--color-text-chocolate); color: var(--color-white); }
     .sort { margin-left: auto; }
-    .sort select { min-height: 44px; border-radius: var(--radius-sm); border: 1.5px solid #DDD6CC; padding: 0 10px; background: white; }
+    .sort select { min-height: 44px; border-radius: var(--radius-pill); border: 1.5px solid var(--color-border-subtle); padding: 0 14px; background: var(--color-white); font-size: 16px; font-family: var(--font-body); }
   `],
 })
 export class CategoryFilterComponent {

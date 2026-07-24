@@ -2,6 +2,7 @@ package com.bakery.order;
 
 import com.bakery.catalog.Product;
 import com.bakery.catalog.ProductRepository;
+import com.bakery.store.StoreSettingsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,17 +23,25 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
+    private final StoreSettingsService storeSettingsService;
 
     @Transactional
     public OrderResponseDto placeOrder(OrderRequestDto request) {
+        if (!storeSettingsService.isAcceptingOrders()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Online ordering is currently closed.");
+        }
+
         Order order = Order.builder()
                 .orderNumber(generateOrderNumber())
                 .guestName(request.guestName())
                 .guestPhone(request.guestPhone())
+                .guestEmail(request.guestEmail())
                 .pickupTime(request.pickupTime())
                 .paymentMethod(request.paymentMethod())
+                .paymentStatus(request.paymentMethod() == PaymentMethod.CARD ? PaymentStatus.PAID : PaymentStatus.UNPAID)
                 .status(OrderStatus.RECEIVED)
                 .createdAt(Instant.now())
+                .notes(request.notes())
                 .build();
 
         BigDecimal subtotal = BigDecimal.ZERO;
@@ -76,11 +85,24 @@ public class OrderService {
         return OrderResponseDto.from(order);
     }
 
+    public List<OrderResponseDto> listAllOrders() {
+        return orderRepository.findAllByOrderByCreatedAtDesc().stream().map(OrderResponseDto::from).toList();
+    }
+
     @Transactional
-    public OrderResponseDto updateStatus(String orderNumber, OrderStatus status) {
+    public OrderResponseDto updateStatus(String orderNumber, OrderStatus status, String cancelReason) {
         Order order = orderRepository.findByOrderNumber(orderNumber)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order " + orderNumber + " not found"));
         order.setStatus(status);
+        order.setCancelReason(status == OrderStatus.CANCELLED ? cancelReason : null);
+        return OrderResponseDto.from(orderRepository.save(order));
+    }
+
+    @Transactional
+    public OrderResponseDto markPaid(String orderNumber) {
+        Order order = orderRepository.findByOrderNumber(orderNumber)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order " + orderNumber + " not found"));
+        order.setPaymentStatus(PaymentStatus.PAID);
         return OrderResponseDto.from(orderRepository.save(order));
     }
 

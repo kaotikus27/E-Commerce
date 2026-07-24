@@ -25,4 +25,9 @@ public class User {
     private String passwordHash;
 
     private String phone;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Role role = Role.CUSTOMER;
 }

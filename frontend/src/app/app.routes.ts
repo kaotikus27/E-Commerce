@@ -1,8 +1,41 @@
 import { Routes } from '@angular/router';
 import { checkoutGuard } from './core/guards/checkout.guard';
 import { authGuard } from './core/guards/auth.guard';
+import { adminGuard } from './core/guards/admin.guard';
 
 export const routes: Routes = [
+  {
+    path: 'admin',
+    canActivate: [adminGuard],
+    loadComponent: () => import('./features/admin/admin-shell.component').then(m => m.AdminShellComponent),
+    children: [
+      { path: '', redirectTo: 'orders', pathMatch: 'full' },
+      {
+        path: 'orders',
+        loadComponent: () => import('./features/admin/orders/admin-orders-board.component').then(m => m.AdminOrdersBoardComponent),
+      },
+      {
+        path: 'products',
+        loadComponent: () => import('./features/admin/products/admin-products-page.component').then(m => m.AdminProductsPageComponent),
+      },
+      {
+        path: 'settings',
+        loadComponent: () => import('./features/admin/settings/admin-store-settings.component').then(m => m.AdminStoreSettingsComponent),
+      },
+      {
+        path: 'history',
+        loadComponent: () => import('./features/admin/history/admin-history-page.component').then(m => m.AdminHistoryPageComponent),
+      },
+      {
+        path: 'account',
+        loadComponent: () => import('./features/admin/account/admin-account-page.component').then(m => m.AdminAccountPageComponent),
+      },
+    ],
+  },
+  {
+    path: 'admin/login',
+    loadComponent: () => import('./features/admin/admin-login-page.component').then(m => m.AdminLoginPageComponent),
+  },
   {
     path: '',
     loadComponent: () => import('./features/home/home-page.component').then(m => m.HomePageComponent),

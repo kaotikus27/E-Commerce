@@ -1,5 +1,5 @@
 package com.bakery.order;
 
 public enum OrderStatus {
-    RECEIVED, PREPARING, READY, COMPLETED
+    RECEIVED, PREPARING, READY, COMPLETED, CANCELLED
 }

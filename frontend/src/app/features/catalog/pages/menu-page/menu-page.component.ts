@@ -15,9 +15,11 @@ import { ItemModalComponent } from '../../components/item-modal.component';
   standalone: true,
   imports: [CommonModule, ProductCardComponent, LoadingSkeletonComponent, CategoryFilterComponent, ItemModalComponent],
   template: `
-    <section class="container menu-page">
-      <h1>Our Menu</h1>
+    <section class="menu-hero">
+      <h1>Baked Fresh, Served with Love</h1>
+    </section>
 
+    <section class="container menu-page">
       <app-category-filter
         [categories]="productService.categories()"
         [selectedCategoryId]="selectedCategoryId()"
@@ -30,10 +32,11 @@ import { ItemModalComponent } from '../../components/item-modal.component';
       } @else if (sortedProducts().length === 0) {
         <p class="empty">No items match your search. Try another category.</p>
       } @else {
-        <div class="grid-responsive">
+        <div class="product-list">
           @for (p of sortedProducts(); track p.id) {
             <app-product-card
               [product]="p"
+              layout="list"
               (open)="activeProduct.set($event)"
               (quickAddToCart)="quickAdd($event)">
             </app-product-card>
@@ -49,8 +52,14 @@ import { ItemModalComponent } from '../../components/item-modal.component';
     </app-item-modal>
   `,
   styles: [`
+    .menu-hero {
+      background: linear-gradient(135deg, var(--color-terracotta), var(--color-text-chocolate));
+      padding: 48px 16px; text-align: center;
+    }
+    .menu-hero h1 { color: var(--color-white); margin: 0; font-size: 28px; }
     .menu-page { padding: 24px 16px 48px; }
     .empty { text-align: center; color: var(--color-charcoal); padding: 48px 0; }
+    .product-list { display: flex; flex-direction: column; gap: 12px; }
   `],
 })
 export class MenuPageComponent {

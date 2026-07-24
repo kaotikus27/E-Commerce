@@ -23,6 +23,9 @@ export class CartService {
 
   readonly isDrawerOpen = signal(false);
 
+  /** Selected pickup slot from <app-pickup-time-picker>, read by checkout when placing the order. */
+  readonly pickupTime = signal('');
+
   constructor(private notifications: NotificationService) {
     effect(() => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this._items()));
@@ -83,6 +86,11 @@ export class CartService {
 
   clear() {
     this._items.set([]);
+    this.pickupTime.set('');
+  }
+
+  setPickupTime(time: string) {
+    this.pickupTime.set(time);
   }
 
   openDrawer() { this.isDrawerOpen.set(true); }

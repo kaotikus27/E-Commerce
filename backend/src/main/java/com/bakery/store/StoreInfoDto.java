@@ -9,6 +9,7 @@ public record StoreInfoDto(
         String mapUrl,
         boolean open,
         String todayHoursLabel,
-        List<StoreHoursDto> hours
+        int orderLeadTimeMinutes,
+        List<DayScheduleDto> schedule
 ) {
 }

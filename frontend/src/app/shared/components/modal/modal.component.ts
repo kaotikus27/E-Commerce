@@ -22,7 +22,7 @@ import { CommonModule } from '@angular/common';
   `,
   styles: [`
     .modal-backdrop {
-      position: fixed; inset: 0; background: rgba(43,43,43,0.5);
+      position: fixed; inset: 0; background: var(--color-backdrop);
       display: flex; align-items: flex-end; justify-content: center;
       z-index: 900; animation: fadeIn .15s ease;
     }

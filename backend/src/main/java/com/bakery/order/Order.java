@@ -25,10 +25,14 @@ public class Order {
 
     private String guestName;
     private String guestPhone;
+    private String guestEmail;
     private String pickupTime;
 
     @Enumerated(EnumType.STRING)
     private PaymentMethod paymentMethod;
+
+    @Enumerated(EnumType.STRING)
+    private PaymentStatus paymentStatus;
 
     @Enumerated(EnumType.STRING)
     private OrderStatus status;
@@ -38,6 +42,11 @@ public class Order {
     private BigDecimal total;
 
     private Instant createdAt;
+
+    private String cancelReason;
+
+    @Column(length = 150)
+    private String notes;
 
     @Builder.Default
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)

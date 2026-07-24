@@ -1,34 +1,41 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { catchError, of } from 'rxjs';
+import { ApiService } from './api.service';
+import { DaySchedule, StoreInfo } from '../models/store-settings.model';
 
-export interface StoreHours { day: string; open: string; close: string; }
+const POLL_MS = 20000;
 
-/** Store hours, open/closed status, and location info for the sticky locator banner. */
+/**
+ * Store hours/pause/lead-time are now admin-editable (see AdminStoreSettingsComponent), so this
+ * service polls the backend instead of computing everything from the local clock — that's what
+ * makes an admin's emergency-pause toggle or hours edit reach the customer "live" without a
+ * page refresh.
+ */
 @Injectable({ providedIn: 'root' })
 export class StoreService {
-  readonly name = 'Sage & Cream Bakehouse';
-  readonly address = '221 Maple Street, Riverside Commons';
-  readonly mapUrl = 'https://maps.google.com/?q=Sage+and+Cream+Bakehouse';
-  readonly phone = '(555) 213-4477';
+  private api = inject(ApiService);
 
-  readonly hours: StoreHours[] = [
-    { day: 'Mon-Fri', open: '07:00', close: '18:00' },
-    { day: 'Sat-Sun', open: '08:00', close: '16:00' },
-  ];
+  private readonly info = signal<StoreInfo | null>(null);
 
-  readonly now = signal(new Date());
+  readonly name = computed(() => this.info()?.name ?? 'Home by Bami');
+  readonly address = computed(() => this.info()?.address ?? '048 Kay Piskal Rd, Brgy. Tigbe, Norzagaray, Bulacan');
+  readonly phone = computed(() => this.info()?.phone ?? '');
+  readonly mapUrl = computed(() => this.info()?.mapUrl ?? '');
+  readonly isOpen = computed(() => this.info()?.open ?? false);
+  readonly todayHoursLabel = computed(() => this.info()?.todayHoursLabel ?? '…');
+  readonly leadTimeMinutes = computed(() => this.info()?.orderLeadTimeMinutes ?? 15);
+  readonly schedule = computed<DaySchedule[]>(() => this.info()?.schedule ?? []);
 
-  readonly isOpen = computed(() => {
-    const d = this.now();
-    const day = d.getDay(); // 0 Sun - 6 Sat
-    const minutes = d.getHours() * 60 + d.getMinutes();
-    const isWeekend = day === 0 || day === 6;
-    const [openStr, closeStr] = isWeekend ? ['08:00', '16:00'] : ['07:00', '18:00'];
-    const toMin = (s: string) => { const [h, m] = s.split(':').map(Number); return h * 60 + m; };
-    return minutes >= toMin(openStr) && minutes < toMin(closeStr);
-  });
+  constructor() {
+    this.poll();
+    setInterval(() => this.poll(), POLL_MS);
+  }
 
-  readonly todayHoursLabel = computed(() => {
-    const isWeekend = this.now().getDay() === 0 || this.now().getDay() === 6;
-    return isWeekend ? '8:00 AM - 4:00 PM' : '7:00 AM - 6:00 PM';
-  });
+  private poll() {
+    this.api.get<StoreInfo>('/store').pipe(
+      catchError(() => of(null))
+    ).subscribe(info => {
+      if (info) this.info.set(info);
+    });
+  }
 }

@@ -23,25 +23,25 @@ interface Step { key: OrderStatus; label: string; icon: string; }
     .stepper { display: flex; align-items: flex-start; }
     .step { flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; }
     .dot {
-      width: 40px; height: 40px; border-radius: 50%; background: var(--color-pistachio);
+      width: 40px; height: 40px; border-radius: 50%; background: var(--color-subdued-pistachio);
       display: flex; align-items: center; justify-content: center; font-size: 16px;
-      border: 2px solid var(--color-pistachio); transition: all .2s ease; z-index: 1;
+      border: 2px solid var(--color-subdued-pistachio); transition: all .2s ease; z-index: 1;
     }
-    .step.active .dot { background: var(--color-sage); border-color: var(--color-sage); }
-    .step.current .dot { box-shadow: 0 0 0 6px var(--color-pistachio); }
-    .label { font-size: 12px; margin-top: 6px; text-align: center; color: var(--color-charcoal); font-weight: 600; }
-    .step.active .label { color: var(--color-espresso); }
-    .line { position: absolute; top: 20px; left: 50%; width: 100%; height: 3px; background: var(--color-pistachio); z-index: 0; }
-    .line.filled { background: var(--color-sage); }
+    .step.active .dot { background: var(--color-hero-sage); border-color: var(--color-hero-sage); }
+    .step.current .dot { box-shadow: 0 0 0 6px var(--color-subdued-pistachio); }
+    .label { font-size: 12px; margin-top: 6px; text-align: center; color: var(--color-text-chocolate); font-weight: 600; }
+    .step.active .label { color: var(--color-text-chocolate); }
+    .line { position: absolute; top: 20px; left: 50%; width: 100%; height: 3px; background: var(--color-subdued-pistachio); z-index: 0; }
+    .line.filled { background: var(--color-hero-sage); }
   `],
 })
 export class OrderStatusStepperComponent {
   @Input() status: OrderStatus = 'RECEIVED';
 
   steps: Step[] = [
-    { key: 'RECEIVED', label: 'Received', icon: '📝' },
-    { key: 'PREPARING', label: 'Baking / Brewing', icon: '🔥' },
-    { key: 'READY', label: 'Ready', icon: '🛍️' },
+    { key: 'RECEIVED', label: 'Order Received', icon: '📝' },
+    { key: 'PREPARING', label: 'Preparing', icon: '🔥' },
+    { key: 'READY', label: 'Ready for Pickup', icon: '🛍️' },
     { key: 'COMPLETED', label: 'Picked Up', icon: '✅' },
   ];
 

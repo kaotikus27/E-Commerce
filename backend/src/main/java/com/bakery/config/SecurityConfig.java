@@ -43,6 +43,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/products/**", "/api/v1/categories/**", "/api/v1/store/**").permitAll()
                         .requestMatchers("/api/v1/orders/**").permitAll() // guest checkout & order tracking
                         .requestMatchers("/h2-console/**").permitAll()
+                        .requestMatchers("/uploads/**").permitAll() // product images must be publicly viewable
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .headers(headers -> headers.frameOptions(frame -> frame.disable())) // allow H2 console frames
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

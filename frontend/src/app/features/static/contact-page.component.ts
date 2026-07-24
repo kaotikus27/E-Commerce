@@ -9,9 +9,8 @@ import { InfoPageComponent } from './info-page.component';
 })
 export class ContactPageComponent {
   html = `
-    <p><strong>Address:</strong> 221 Maple Street, Riverside Commons</p>
-    <p><strong>Phone:</strong> (555) 213-4477</p>
-    <p><strong>Email:</strong> hello@sageandcream.example</p>
-    <p><strong>Hours:</strong> Mon–Fri 7am–6pm · Sat–Sun 8am–4pm</p>
+    <p><strong>Address:</strong> 048 Kay Piskal Rd, Brgy. Tigbe, Norzagaray, Bulacan</p>
+    <p><strong>Email:</strong> hello@homebybami.example</p>
+    <p><strong>Hours:</strong> Tuesday–Sunday 5:00 PM–12:00 MN · Monday Closed</p>
   `;
 }

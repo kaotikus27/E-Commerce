@@ -1,7 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import { catchError, of, tap } from 'rxjs';
 import { ApiService } from './api.service';
-import { Order, OrderRequest } from '../models/order.model';
+import { Order, OrderItemRequest, OrderRequest } from '../models/order.model';
 
 /** Handles order payload submission and (stubbed) payment tokenization. */
 @Injectable({ providedIn: 'root' })
@@ -17,19 +17,34 @@ export class CheckoutService {
     });
   }
 
+  /**
+   * Places the order against the real backend. Deliberately does NOT fall back to a
+   * fake local order on error — a checkout failure needs to be visible to the customer
+   * (and to staff, via the admin dashboard), not silently swallowed.
+   *
+   * The cart's CartItem[] (nested product objects, options as an array) is translated
+   * into the flat wire shape the backend's OrderItemRequestDto actually expects
+   * (productId + a name->value options map) before posting.
+   */
   placeOrder(request: OrderRequest) {
-    return this.api.post<Order>('/orders', request).pipe(
-      tap(order => this.lastOrder.set(order)),
-      catchError(() => {
-        const demoOrder: Order = {
-          ...request,
-          id: 'ORD-' + Math.floor(100000 + Math.random() * 900000),
-          status: 'RECEIVED',
-          createdAt: new Date().toISOString(),
-        };
-        this.lastOrder.set(demoOrder);
-        return of(demoOrder);
-      })
+    const items: OrderItemRequest[] = request.items.map(item => ({
+      productId: item.product.id,
+      quantity: item.quantity,
+      selectedOptions: Object.fromEntries(item.selectedOptions.map(o => [o.name, o.value])),
+    }));
+
+    const body = {
+      guestName: request.guestName,
+      guestPhone: request.guestPhone,
+      guestEmail: request.guestEmail,
+      pickupTime: request.pickupTime,
+      paymentMethod: request.paymentMethod,
+      items,
+      notes: request.notes,
+    };
+
+    return this.api.post<Order>('/orders', body).pipe(
+      tap(order => this.lastOrder.set(order))
     );
   }
 

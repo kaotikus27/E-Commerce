@@ -15,7 +15,7 @@
   <artifactId>coffeeshop-backend</artifactId>
   <version>1.0.0</version>
   <name>coffeeshop-backend</name>
-  <description>Spring Boot API for Sage &amp; Cream Bakehouse ordering site</description>
+  <description>Spring Boot API for Home by Bami ordering site</description>
 
   <properties>
     <java.version>17</java.version>

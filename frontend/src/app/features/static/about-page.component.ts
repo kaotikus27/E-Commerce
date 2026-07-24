@@ -9,8 +9,8 @@ import { InfoPageComponent } from './info-page.component';
 })
 export class AboutPageComponent {
   html = `
-    <p>Sage & Cream Bakehouse started as a weekend farmers-market stall and grew into a
-    neighborhood favorite for fresh sourdough, buttery croissants, and slow-brewed coffee.</p>
+    <p>Home by Bami started as a small home kitchen and grew into a cozy neighborhood cafe for
+    fresh sourdough, buttery croissants, and slow-brewed coffee — little home, heroic bakes.</p>
     <p>Every loaf is fermented for 48 hours, every pastry is laminated by hand, and every cup
     is pulled to order — because good food shouldn't be rushed, even when you're ordering ahead.</p>
     <h3>Our Values</h3>

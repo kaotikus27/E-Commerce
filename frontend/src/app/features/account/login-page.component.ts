@@ -4,6 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 
+/**
+ * Customer login only — self-registration is temporarily hidden here (not removed from the
+ * backend, just no UI entry point) since guest checkout is the primary ordering flow and
+ * doesn't require an account at all. Admin sign-in lives at its own /admin/login route.
+ */
 @Component({
   selector: 'app-login-page',
   standalone: true,
@@ -11,14 +16,8 @@ import { AuthService } from '../../core/services/auth.service';
   template: `
     <section class="container login-page">
       <div class="card form-card">
-        <h1>{{ mode() === 'login' ? 'Log In' : 'Create Account' }}</h1>
+        <h1>Log In</h1>
 
-        @if (mode() === 'register') {
-          <div class="field">
-            <label for="name">Name</label>
-            <input id="name" [(ngModel)]="name" name="name" />
-          </div>
-        }
         <div class="field">
           <label for="email">Email</label>
           <input id="email" type="email" [(ngModel)]="email" name="email" />
@@ -28,17 +27,11 @@ import { AuthService } from '../../core/services/auth.service';
           <input id="password" type="password" [(ngModel)]="password" name="password" />
         </div>
 
-        <button class="btn btn-primary btn-block" (click)="submit()">
-          {{ mode() === 'login' ? 'Log In' : 'Sign Up' }}
-        </button>
+        @if (errorMessage()) {
+          <p class="error">{{ errorMessage() }}</p>
+        }
 
-        <p class="switch">
-          @if (mode() === 'login') {
-            Don't have an account? <a (click)="mode.set('register')">Sign up</a>
-          } @else {
-            Already have an account? <a (click)="mode.set('login')">Log in</a>
-          }
-        </p>
+        <button class="btn btn-primary btn-block" (click)="submit()">Log In</button>
 
         <p class="switch"><a routerLink="/shop">Continue as guest →</a></p>
       </div>
@@ -49,6 +42,7 @@ import { AuthService } from '../../core/services/auth.service';
     .form-card { padding: 24px; }
     .switch { text-align: center; font-size: 14px; margin-top: 8px; }
     .switch a { color: var(--color-sage-700); font-weight: 700; cursor: pointer; text-decoration: underline; }
+    .error { color: var(--color-error); font-weight: 600; font-size: 13px; margin-bottom: 12px; }
   `],
 })
 export class LoginPageComponent {
@@ -56,19 +50,20 @@ export class LoginPageComponent {
   router = inject(Router);
   route = inject(ActivatedRoute);
 
-  mode = signal<'login' | 'register'>('login');
-  name = '';
   email = '';
   password = '';
+  errorMessage = signal('');
 
   submit() {
-    const action$ = this.mode() === 'login'
-      ? this.auth.login(this.email, this.password)
-      : this.auth.register(this.name, this.email, this.password);
-
-    action$.subscribe(() => {
-      const redirectTo = this.route.snapshot.queryParamMap.get('redirectTo') ?? '/account';
-      this.router.navigateByUrl(redirectTo);
+    this.errorMessage.set('');
+    this.auth.login(this.email, this.password).subscribe({
+      next: () => {
+        const redirectTo = this.route.snapshot.queryParamMap.get('redirectTo') ?? '/account';
+        this.router.navigateByUrl(redirectTo);
+      },
+      error: (err: { error?: { message?: string } }) => {
+        this.errorMessage.set(err?.error?.message || 'Could not sign in — the server may be unreachable.');
+      },
     });
   }
 }

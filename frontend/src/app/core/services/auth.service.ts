@@ -1,5 +1,5 @@
 import { Injectable, computed, signal } from '@angular/core';
-import { catchError, of, tap } from 'rxjs';
+import { tap } from 'rxjs';
 import { ApiService } from './api.service';
 import { AuthResponse, User } from '../models/user.model';
 
@@ -29,27 +29,13 @@ export class AuthService {
 
   login(email: string, password: string) {
     return this.api.post<AuthResponse>('/auth/login', { email, password }).pipe(
-      tap(res => this.setSession(res)),
-      catchError(() => {
-        // Demo fallback so the flow is testable without the backend running.
-        const demo: AuthResponse = {
-          token: 'demo-jwt-token',
-          user: { id: 1, name: email.split('@')[0], email },
-        };
-        this.setSession(demo);
-        return of(demo);
-      })
+      tap(res => this.setSession(res))
     );
   }
 
   register(name: string, email: string, password: string) {
     return this.api.post<AuthResponse>('/auth/register', { name, email, password }).pipe(
-      tap(res => this.setSession(res)),
-      catchError(() => {
-        const demo: AuthResponse = { token: 'demo-jwt-token', user: { id: 1, name, email } };
-        this.setSession(demo);
-        return of(demo);
-      })
+      tap(res => this.setSession(res))
     );
   }
 
@@ -63,5 +49,10 @@ export class AuthService {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     this.user.set(null);
+  }
+
+  /** No demo fallback here (unlike login/register) — a password-change failure must be real and visible. */
+  changePassword(currentPassword: string, newPassword: string) {
+    return this.api.put<void>('/admin/password', { currentPassword, newPassword });
   }
 }

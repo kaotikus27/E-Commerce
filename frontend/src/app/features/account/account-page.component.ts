@@ -1,5 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { CheckoutService } from '../../core/services/checkout.service';
 
@@ -24,7 +25,7 @@ import { CheckoutService } from '../../core/services/checkout.service';
           <div class="order-row">
             <span>#{{ lastOrder()!.id }}</span>
             <span>{{ lastOrder()!.status }}</span>
-            <span>\${{ lastOrder()!.total.toFixed(2) }}</span>
+            <span>₱{{ lastOrder()!.total.toFixed(2) }}</span>
           </div>
         } @else {
           <p class="muted">No past orders yet.</p>
@@ -41,18 +42,26 @@ import { CheckoutService } from '../../core/services/checkout.service';
         <p class="muted">Tap the ♡ icon on any menu item to save it here.</p>
       </div>
 
-      <button class="btn btn-secondary btn-block" (click)="auth.logout()">Log Out</button>
+      <button class="btn btn-secondary btn-block" (click)="logout()">Log Out</button>
     </section>
   `,
   styles: [`
     .account-page { padding: 24px 16px 48px; max-width: 560px; }
     .section { padding: 20px; margin-bottom: 16px; }
-    .muted { color: #6b6b6b; font-size: 14px; }
+    .muted { color: var(--color-text-muted); font-size: 14px; }
     .order-row { display: flex; justify-content: space-between; font-size: 14px; font-weight: 600; }
   `],
 })
 export class AccountPageComponent {
   auth = inject(AuthService);
   checkoutService = inject(CheckoutService);
+  private router = inject(Router);
   lastOrder = this.checkoutService.lastOrder;
+
+  logout() {
+    this.auth.logout();
+    // Route guards only run on navigation, not reactively on the auth signal — without an
+    // explicit redirect here, this guarded page stays mounted (with a now-null user) after logout.
+    this.router.navigate(['/']);
+  }
 }

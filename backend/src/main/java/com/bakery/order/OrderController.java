@@ -22,9 +22,4 @@ public class OrderController {
     public OrderResponseDto getOrder(@PathVariable String orderNumber) {
         return orderService.getOrderStatus(orderNumber);
     }
-
-    @PatchMapping("/{orderNumber}/status")
-    public OrderResponseDto updateStatus(@PathVariable String orderNumber, @RequestParam OrderStatus status) {
-        return orderService.updateStatus(orderNumber, status);
-    }
 }
