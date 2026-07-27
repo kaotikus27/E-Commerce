@@ -1,5 +1,7 @@
+import { HttpClient } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { catchError, of, tap } from 'rxjs';
+import { environment } from '../../../../environments/environment';
 import { ApiService } from '../../../core/services/api.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { StoreClosure, StoreSettings } from '../../../core/models/store-settings.model';
@@ -7,6 +9,7 @@ import { StoreClosure, StoreSettings } from '../../../core/models/store-settings
 @Injectable({ providedIn: 'root' })
 export class AdminStoreSettingsService {
   private api = inject(ApiService);
+  private http = inject(HttpClient);
   private notifications = inject(NotificationService);
 
   readonly settings = signal<StoreSettings | null>(null);
@@ -30,6 +33,17 @@ export class AdminStoreSettingsService {
       tap(saved => this.settings.set(saved)),
       catchError(() => {
         this.notifications.error('Could not save store settings.');
+        return of(null);
+      })
+    );
+  }
+
+  uploadImage(file: File) {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<{ url: string }>(`${environment.apiUrl}/admin/uploads/image`, form).pipe(
+      catchError(() => {
+        this.notifications.error('Could not upload the image.');
         return of(null);
       })
     );

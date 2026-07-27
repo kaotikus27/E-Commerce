@@ -32,7 +32,6 @@ export class CheckoutService {
       guestEmail: request.guestEmail,
       pickupTime: request.pickupTime,
       paymentMethod: request.paymentMethod,
-      gcashReference: request.gcashReference,
       items,
       notes: request.notes,
     };

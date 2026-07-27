@@ -39,6 +39,7 @@ public class StoreSettingsService {
         settings.setStopOrderingBeforeCloseMinutes(request.stopOrderingBeforeCloseMinutes());
         settings.setGcashAccountName(request.gcashAccountName());
         settings.setGcashNumber(request.gcashNumber());
+        settings.setGcashQrImagePath(request.gcashQrImagePath());
         return StoreSettingsDto.from(storeSettingsRepository.save(settings));
     }
 

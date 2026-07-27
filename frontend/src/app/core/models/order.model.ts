@@ -15,8 +15,8 @@ export interface OrderRequest {
   guestEmail?: string;
   pickupTime: string;
   paymentMethod: PaymentMethod;
-  gcashReference?: string;
-  /** GCash receipt screenshot — required by the backend when paymentMethod is GCASH_MANUAL. */
+  /** GCash receipt screenshot — required by the backend when paymentMethod is GCASH_MANUAL.
+   *  The reference number is no longer typed by the customer — it's read via OCR off this image. */
   receiptFile?: File;
   items: CartItem[];
   subtotal: number;

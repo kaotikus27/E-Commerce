@@ -12,6 +12,7 @@ public record StoreInfoDto(
         int orderLeadTimeMinutes,
         List<DayScheduleDto> schedule,
         String gcashAccountName,
-        String gcashNumber
+        String gcashNumber,
+        String gcashQrImagePath
 ) {
 }

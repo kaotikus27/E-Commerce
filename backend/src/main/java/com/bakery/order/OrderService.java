@@ -63,11 +63,7 @@ public class OrderService {
                 .build();
 
         if (isGcash) {
-            String ocrRef = extractReference(receiptImage);
-            order.setReceiptImagePath(storeReceiptImage(receiptImage));
-            order.setOcrExtractedRef(ocrRef);
-            String typedRef = request.gcashReference();
-            order.setGcashReference(typedRef != null && !typedRef.isBlank() ? typedRef : ocrRef);
+            applyReceiptImage(order, receiptImage);
         }
 
         BigDecimal subtotal = BigDecimal.ZERO;
@@ -153,9 +149,34 @@ public class OrderService {
         return OrderResponseDto.from(orderRepository.save(order));
     }
 
+    /** Admin manually attaches/replaces a receipt screenshot during verification — e.g. the
+     *  customer sent proof through another channel, or the original upload was unreadable. */
+    @Transactional
+    public OrderResponseDto uploadReceiptForVerification(String orderNumber, MultipartFile receiptImage) {
+        if (receiptImage == null || receiptImage.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Receipt image is required.");
+        }
+        Order order = orderRepository.findByOrderNumber(orderNumber)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order " + orderNumber + " not found"));
+        applyReceiptImage(order, receiptImage);
+        return OrderResponseDto.from(orderRepository.save(order));
+    }
+
     private String generateOrderNumber() {
         int suffix = ThreadLocalRandom.current().nextInt(100000, 999999);
         return "ORD-" + suffix;
+    }
+
+    /** Runs OCR, stores the image, and records both — only seeds gcashReference from OCR if it's
+     *  not already set, so a re-upload during admin verification doesn't clobber an admin's
+     *  already-confirmed/corrected reference. */
+    private void applyReceiptImage(Order order, MultipartFile receiptImage) {
+        String ocrRef = extractReference(receiptImage);
+        order.setReceiptImagePath(storeReceiptImage(receiptImage));
+        order.setOcrExtractedRef(ocrRef);
+        if (order.getGcashReference() == null || order.getGcashReference().isBlank()) {
+            order.setGcashReference(ocrRef);
+        }
     }
 
     private String extractReference(MultipartFile receiptImage) {

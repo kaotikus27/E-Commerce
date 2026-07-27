@@ -27,6 +27,7 @@ export class StoreService {
   readonly schedule = computed<DaySchedule[]>(() => this.info()?.schedule ?? []);
   readonly gcashAccountName = computed(() => this.info()?.gcashAccountName ?? '');
   readonly gcashNumber = computed(() => this.info()?.gcashNumber ?? '');
+  readonly gcashQrImagePath = computed(() => this.info()?.gcashQrImagePath ?? '');
 
   constructor() {
     this.poll();

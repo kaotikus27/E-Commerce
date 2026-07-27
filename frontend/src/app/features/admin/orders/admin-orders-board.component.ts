@@ -98,7 +98,15 @@ const ORIGINAL_TITLE = 'Home by Bami — Admin';
         <div class="gcash-ref">Ref #: <strong>{{ order.gcashReference }}</strong></div>
       }
       @if (order.receiptImagePath) {
-        <a [href]="toImageUrl(order.receiptImagePath)" target="_blank" rel="noopener" class="receipt-link">📷 View Uploaded Receipt</a>
+        <a [href]="toImageUrl(order.receiptImagePath)" target="_blank" rel="noopener" class="receipt-thumb-link">
+          <img [src]="toImageUrl(order.receiptImagePath)" alt="Uploaded GCash receipt" class="receipt-thumb" />
+        </a>
+      }
+      @if (order.paymentStatus === 'PENDING_VERIFICATION') {
+        <div class="field receipt-upload">
+          <label [for]="'receipt-' + order.id">{{ order.receiptImagePath ? 'Replace receipt image' : 'Upload receipt image' }}</label>
+          <input [id]="'receipt-' + order.id" type="file" accept="image/*" (change)="onReceiptFileSelected(order, $event)" />
+        </div>
       }
       @if (order.paymentStatus === 'UNPAID' && order.paymentMethod === 'CASH_ON_PICKUP') {
         <button class="btn btn-secondary btn-sm mark-paid" (click)="markPaid(order)">Mark as Paid</button>
@@ -147,7 +155,10 @@ const ORIGINAL_TITLE = 'Home by Bami — Admin';
     .ocr-badge { font-size: 12px; color: var(--color-text-muted); margin-bottom: 8px; }
     .ocr-badge.mismatch { color: var(--color-status-closed); font-weight: 600; }
     .ocr-badge.ocr-unavailable { color: var(--color-status-pending); font-weight: 600; }
-    .receipt-link { display: inline-block; font-size: 12px; font-weight: 700; color: var(--color-sage-700); text-decoration: underline; margin-bottom: 10px; }
+    .receipt-thumb-link { display: block; margin-bottom: 8px; }
+    .receipt-thumb { display: block; width: 100%; max-height: 160px; object-fit: cover; border-radius: var(--radius-sm); border: 1.5px solid var(--color-subdued-pistachio); }
+    .receipt-upload { margin-bottom: 8px; }
+    .receipt-upload label { font-size: 12px; }
     .mark-paid { width: 100%; margin-bottom: 10px; }
     .items { list-style: none; padding: 0; margin: 0 0 10px; font-size: 13px; }
     .notes { font-size: 12px; background: var(--color-subdued-pistachio); border-radius: var(--radius-sm); padding: 6px 8px; margin-bottom: 10px; }
@@ -235,6 +246,14 @@ export class AdminOrdersBoardComponent implements OnInit, OnDestroy {
     const confirmedReference = this.getEditedRef(order).trim() || undefined;
     this.orderService.verifyAndAcceptPayment(order.id, confirmedReference).subscribe(updated => {
       if (updated) this.notifications.success(`Order #${order.id} payment verified — sent to kitchen.`);
+    });
+  }
+
+  onReceiptFileSelected(order: AdminOrder, event: Event) {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    this.orderService.uploadReceipt(order.id, file).subscribe(updated => {
+      if (updated) this.notifications.success(`Order #${order.id} receipt image updated.`);
     });
   }
 

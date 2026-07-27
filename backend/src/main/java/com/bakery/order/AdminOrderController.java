@@ -2,7 +2,9 @@ package com.bakery.order;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -34,5 +36,11 @@ public class AdminOrderController {
                                                     @RequestBody(required = false) VerifyPaymentRequest request) {
         String confirmedReference = request != null ? request.confirmedReference() : null;
         return orderService.verifyAndAcceptPayment(orderNumber, confirmedReference);
+    }
+
+    @PatchMapping(value = "/{orderNumber}/receipt", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public OrderResponseDto uploadReceipt(@PathVariable String orderNumber,
+                                           @RequestPart("receiptImage") MultipartFile receiptImage) {
+        return orderService.uploadReceiptForVerification(orderNumber, receiptImage);
     }
 }

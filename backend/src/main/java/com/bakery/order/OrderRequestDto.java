@@ -14,7 +14,6 @@ public record OrderRequestDto(
         @NotNull String pickupTime,
         @NotNull PaymentMethod paymentMethod,
         @NotEmpty List<OrderItemRequestDto> items,
-        @Size(max = 150) String notes,
-        String gcashReference
+        @Size(max = 150) String notes
 ) {
 }

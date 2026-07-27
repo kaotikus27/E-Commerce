@@ -23,7 +23,8 @@ public class StoreService {
                 settings.orderLeadTimeMinutes(),
                 settings.schedule(),
                 settings.gcashAccountName(),
-                settings.gcashNumber()
+                settings.gcashNumber(),
+                settings.gcashQrImagePath()
         );
     }
 }

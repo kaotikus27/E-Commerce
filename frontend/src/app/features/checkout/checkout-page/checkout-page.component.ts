@@ -8,6 +8,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { StoreService } from '../../../core/services/store.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { OrderRequest, PaymentMethod } from '../../../core/models/order.model';
+import { toAbsoluteImageUrl } from '../../../core/utils/image-url.util';
 
 @Component({
   selector: 'app-checkout-page',
@@ -66,15 +67,14 @@ import { OrderRequest, PaymentMethod } from '../../../core/models/order.model';
                   } @else {
                     <p class="gcash-instructions">GCash details aren't set up yet — please ask staff for the account to send payment to, then upload a screenshot of your receipt below.</p>
                   }
+                  @if (store.gcashQrImagePath()) {
+                    <img [src]="toImageUrl(store.gcashQrImagePath())" alt="GCash QR code" class="gcash-qr" />
+                  }
                   <div class="field">
                     <label for="receipt-file">GCash Receipt Screenshot</label>
                     <input id="receipt-file" type="file" accept="image/*" (change)="onReceiptFileSelected($event)" />
                     @if (receiptFile()) { <span class="file-chosen">Selected: {{ receiptFile()!.name }}</span> }
                     @if (receiptFileError()) { <span class="field-error">{{ receiptFileError() }}</span> }
-                  </div>
-                  <div class="field">
-                    <label for="gcash-ref">GCash Reference Number (optional — read automatically from your screenshot)</label>
-                    <input id="gcash-ref" [(ngModel)]="gcashReference" name="gcashReference" placeholder="e.g. 1234567890123" />
                   </div>
                 </div>
               }
@@ -129,6 +129,7 @@ import { OrderRequest, PaymentMethod } from '../../../core/models/order.model';
     .radio-row { display: flex; align-items: center; gap: 8px; font-weight: 600; min-height: 44px; }
     .gcash-box { background: var(--color-subdued-pistachio); border-radius: var(--radius-sm); padding: 12px; margin: 4px 0 8px; }
     .gcash-instructions { font-size: 13px; line-height: 1.5; margin: 0 0 10px; }
+    .gcash-qr { display: block; width: 220px; height: 220px; max-width: 100%; object-fit: contain; margin: 0 auto 12px; border-radius: var(--radius-sm); background: #fff; padding: 8px; }
     .char-count { font-size: 12px; color: var(--color-text-muted); align-self: flex-end; }
     .file-chosen { font-size: 12px; color: var(--color-text-muted); }
     .pickup-line { font-size: 14px; margin-bottom: 8px; }
@@ -153,8 +154,8 @@ export class CheckoutPageComponent {
   guestPhone = '';
   guestEmail = '';
   paymentMethod: PaymentMethod = 'CASH_ON_PICKUP';
-  gcashReference = '';
   receiptFile = signal<File | null>(null);
+  toImageUrl = toAbsoluteImageUrl;
   notes = '';
   submitting = signal(false);
   errorMessage = signal('');
@@ -222,7 +223,6 @@ export class CheckoutPageComponent {
       guestEmail: this.guestEmail.trim() || undefined,
       pickupTime: this.cart.pickupTime(),
       paymentMethod: this.paymentMethod,
-      gcashReference: this.paymentMethod === 'GCASH_MANUAL' ? this.gcashReference.trim() : undefined,
       receiptFile: this.paymentMethod === 'GCASH_MANUAL' ? this.receiptFile() ?? undefined : undefined,
       items: this.cart.items(),
       subtotal: this.cart.subtotal(),

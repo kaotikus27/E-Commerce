@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { AdminStoreSettingsService } from '../services/admin-store-settings.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { DayOfWeekName, DaySchedule } from '../../../core/models/store-settings.model';
+import { toAbsoluteImageUrl } from '../../../core/utils/image-url.util';
 
 const DAY_ORDER: DayOfWeekName[] = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
 const DAY_LABEL: Record<DayOfWeekName, string> = {
@@ -87,6 +88,13 @@ interface DayForm {
         <label for="gcash-number">GCash Number</label>
         <input id="gcash-number" [(ngModel)]="gcashNumber" name="gcashNumber" placeholder="09XX XXX XXXX" />
       </div>
+      <div class="field">
+        <label for="gcash-qr">GCash QR Code</label>
+        @if (qrPreviewUrl) {
+          <img [src]="qrPreviewUrl" alt="GCash QR code preview" class="qr-preview" />
+        }
+        <input id="gcash-qr" type="file" accept="image/png,image/jpeg,image/webp" (change)="onQrFileSelected($event)" />
+      </div>
       <button class="btn btn-primary btn-block" [disabled]="saving" (click)="save()">
         {{ saving ? 'Saving…' : 'Save Store Schedule' }}
       </button>
@@ -114,6 +122,7 @@ interface DayForm {
     .pause-section { text-align: center; }
     .status-line { font-weight: 700; margin-bottom: 12px; }
     .hint { font-size: 13px; color: var(--color-text-muted); margin-bottom: 14px; }
+    .qr-preview { display: block; width: 140px; height: 140px; object-fit: contain; border: 1.5px solid var(--color-subdued-pistachio); border-radius: var(--radius-sm); margin-bottom: 8px; background: #fff; }
     .paused { color: var(--color-status-closed); }
     .accepting { color: var(--color-status-open); }
     .day-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 0; border-bottom: 1px solid var(--color-subdued-pistachio); }
@@ -137,6 +146,9 @@ export class AdminStoreSettingsComponent implements OnInit {
   cutoffMinutes = 0;
   gcashAccountName = '';
   gcashNumber = '';
+  gcashQrImagePath = '';
+  qrPreviewUrl = '';
+  private selectedQrFile: File | null = null;
   saving = false;
 
   newClosureDate = '';
@@ -156,8 +168,17 @@ export class AdminStoreSettingsComponent implements OnInit {
         this.cutoffMinutes = s.stopOrderingBeforeCloseMinutes;
         this.gcashAccountName = s.gcashAccountName ?? '';
         this.gcashNumber = s.gcashNumber ?? '';
+        this.gcashQrImagePath = s.gcashQrImagePath ?? '';
+        this.qrPreviewUrl = s.gcashQrImagePath ? toAbsoluteImageUrl(s.gcashQrImagePath) : '';
       }
     });
+  }
+
+  onQrFileSelected(event: Event) {
+    const file = (event.target as HTMLInputElement).files?.[0] ?? null;
+    if (!file) return;
+    this.selectedQrFile = file;
+    this.qrPreviewUrl = URL.createObjectURL(file);
   }
 
   ngOnInit() {
@@ -191,6 +212,21 @@ export class AdminStoreSettingsComponent implements OnInit {
 
   save() {
     this.saving = true;
+
+    if (this.selectedQrFile) {
+      this.settings.uploadImage(this.selectedQrFile).subscribe(res => {
+        if (res) {
+          this.gcashQrImagePath = res.url;
+          this.selectedQrFile = null;
+        }
+        this.saveSettings();
+      });
+    } else {
+      this.saveSettings();
+    }
+  }
+
+  private saveSettings() {
     const schedule: DaySchedule[] = this.days.map(d => ({
       dayOfWeek: d.dayOfWeek,
       openTime: d.closedAllDay ? null : (d.openTime || null),
@@ -205,6 +241,7 @@ export class AdminStoreSettingsComponent implements OnInit {
       stopOrderingBeforeCloseMinutes: this.cutoffMinutes,
       gcashAccountName: this.gcashAccountName.trim(),
       gcashNumber: this.gcashNumber.trim(),
+      gcashQrImagePath: this.gcashQrImagePath || null,
     }).subscribe(res => {
       this.saving = false;
       if (res) this.notifications.success('Store schedule saved.');

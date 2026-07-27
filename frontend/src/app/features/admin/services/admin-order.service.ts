@@ -95,6 +95,22 @@ export class AdminOrderService {
     );
   }
 
+  /** Admin manually attaches/replaces a receipt screenshot during verification — e.g. the
+   *  customer sent proof through another channel, or the original upload was unreadable. */
+  uploadReceipt(orderNumber: string, file: File) {
+    const formData = new FormData();
+    formData.append('receiptImage', file);
+    return this.api.patch<AdminOrder>(`/admin/orders/${orderNumber}/receipt`, formData).pipe(
+      tap(updated => {
+        this.orders.update(list => list.map(o => (o.id === updated.id ? updated : o)));
+      }),
+      catchError(() => {
+        this.notifications.error('Could not upload the receipt image.');
+        return of(null);
+      })
+    );
+  }
+
   /** Client-side search over the archived (completed/cancelled) list by name, order #, or phone. */
   searchHistory(query: string): AdminOrder[] {
     const q = query.trim().toLowerCase();

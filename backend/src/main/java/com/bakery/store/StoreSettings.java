@@ -31,4 +31,7 @@ public class StoreSettings {
     /** GCash account customers should send manual payments to. Blank until an admin sets it. */
     private String gcashAccountName;
     private String gcashNumber;
+
+    /** Path to the admin-uploaded GCash QR code image, shown at checkout. Blank until set. */
+    private String gcashQrImagePath;
 }
