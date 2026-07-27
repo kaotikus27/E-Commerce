@@ -6,13 +6,19 @@ import com.bakery.store.StoreSettingsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Service
@@ -20,20 +26,27 @@ import java.util.concurrent.ThreadLocalRandom;
 public class OrderService {
 
     private static final BigDecimal TAX_RATE = new BigDecimal("0.0875");
+    private static final Path RECEIPT_UPLOAD_DIR = Path.of("uploads", "receipts");
+    private static final Map<String, String> ALLOWED_RECEIPT_CONTENT_TYPES = Map.of(
+            "image/png", "png",
+            "image/jpeg", "jpg",
+            "image/webp", "webp"
+    );
 
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
     private final StoreSettingsService storeSettingsService;
+    private final GCashOcrService gcashOcrService;
 
     @Transactional
-    public OrderResponseDto placeOrder(OrderRequestDto request) {
+    public OrderResponseDto placeOrder(OrderRequestDto request, MultipartFile receiptImage) {
         if (!storeSettingsService.isAcceptingOrders()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Online ordering is currently closed.");
         }
 
-        if (request.paymentMethod() == PaymentMethod.GCASH_MANUAL
-                && (request.gcashReference() == null || request.gcashReference().isBlank())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "GCash reference number is required for this payment method.");
+        boolean isGcash = request.paymentMethod() == PaymentMethod.GCASH_MANUAL;
+        if (isGcash && (receiptImage == null || receiptImage.isEmpty())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "GCash payment receipt image is required.");
         }
 
         Order order = Order.builder()
@@ -43,13 +56,19 @@ public class OrderService {
                 .guestEmail(request.guestEmail())
                 .pickupTime(request.pickupTime())
                 .paymentMethod(request.paymentMethod())
-                .paymentStatus(request.paymentMethod() == PaymentMethod.GCASH_MANUAL
-                        ? PaymentStatus.PENDING_VERIFICATION : PaymentStatus.UNPAID)
+                .paymentStatus(isGcash ? PaymentStatus.PENDING_VERIFICATION : PaymentStatus.UNPAID)
                 .status(OrderStatus.RECEIVED)
                 .createdAt(Instant.now())
                 .notes(request.notes())
-                .gcashReference(request.paymentMethod() == PaymentMethod.GCASH_MANUAL ? request.gcashReference() : null)
                 .build();
+
+        if (isGcash) {
+            String ocrRef = extractReference(receiptImage);
+            order.setReceiptImagePath(storeReceiptImage(receiptImage));
+            order.setOcrExtractedRef(ocrRef);
+            String typedRef = request.gcashReference();
+            order.setGcashReference(typedRef != null && !typedRef.isBlank() ? typedRef : ocrRef);
+        }
 
         BigDecimal subtotal = BigDecimal.ZERO;
 
@@ -119,11 +138,16 @@ public class OrderService {
         return OrderResponseDto.from(orderRepository.save(order));
     }
 
-    /** Staff has cross-checked the GCash reference against their own app — verify payment and send it to the kitchen. */
+    /** Staff has cross-checked the GCash reference against their own app — verify payment and send it to the kitchen.
+     *  confirmedReference, if provided, overwrites gcashReference with what the admin actually verified
+     *  (e.g. a typo they corrected), so the stored record reflects the confirmed transaction, not the customer's entry. */
     @Transactional
-    public OrderResponseDto verifyAndAcceptPayment(String orderNumber) {
+    public OrderResponseDto verifyAndAcceptPayment(String orderNumber, String confirmedReference) {
         Order order = orderRepository.findByOrderNumber(orderNumber)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order " + orderNumber + " not found"));
+        if (confirmedReference != null && !confirmedReference.isBlank()) {
+            order.setGcashReference(confirmedReference);
+        }
         order.setPaymentStatus(PaymentStatus.PAID);
         order.setStatus(OrderStatus.PREPARING);
         return OrderResponseDto.from(orderRepository.save(order));
@@ -132,5 +156,31 @@ public class OrderService {
     private String generateOrderNumber() {
         int suffix = ThreadLocalRandom.current().nextInt(100000, 999999);
         return "ORD-" + suffix;
+    }
+
+    private String extractReference(MultipartFile receiptImage) {
+        try (var imageStream = receiptImage.getInputStream()) {
+            return gcashOcrService.extractReferenceNumber(imageStream);
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    private String storeReceiptImage(MultipartFile receiptImage) {
+        String extension = ALLOWED_RECEIPT_CONTENT_TYPES.get(receiptImage.getContentType());
+        if (extension == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Unsupported receipt image type. Allowed: " + List.copyOf(ALLOWED_RECEIPT_CONTENT_TYPES.keySet()));
+        }
+
+        String filename = UUID.randomUUID() + "." + extension;
+        try {
+            Files.createDirectories(RECEIPT_UPLOAD_DIR);
+            receiptImage.transferTo(RECEIPT_UPLOAD_DIR.resolve(filename));
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to store receipt image", e);
+        }
+
+        return "/uploads/receipts/" + filename;
     }
 }

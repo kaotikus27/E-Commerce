@@ -3,8 +3,10 @@ package com.bakery.order;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1/orders")
@@ -13,9 +15,11 @@ public class OrderController {
 
     private final OrderService orderService;
 
-    @PostMapping
-    public ResponseEntity<OrderResponseDto> placeOrder(@Valid @RequestBody OrderRequestDto request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(orderService.placeOrder(request));
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<OrderResponseDto> placeOrder(
+            @Valid @RequestPart("orderData") OrderRequestDto request,
+            @RequestPart(value = "receiptImage", required = false) MultipartFile receiptImage) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(orderService.placeOrder(request, receiptImage));
     }
 
     @GetMapping("/{orderNumber}")

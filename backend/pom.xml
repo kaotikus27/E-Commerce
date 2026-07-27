@@ -46,6 +46,13 @@
       <scope>runtime</scope>
     </dependency>
 
+    <!-- GCash receipt OCR -->
+    <dependency>
+      <groupId>net.sourceforge.tess4j</groupId>
+      <artifactId>tess4j</artifactId>
+      <version>5.11.0</version>
+    </dependency>
+
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>

@@ -30,7 +30,9 @@ public class AdminOrderController {
     }
 
     @PatchMapping("/{orderNumber}/verify-payment")
-    public OrderResponseDto verifyAndAcceptPayment(@PathVariable String orderNumber) {
-        return orderService.verifyAndAcceptPayment(orderNumber);
+    public OrderResponseDto verifyAndAcceptPayment(@PathVariable String orderNumber,
+                                                    @RequestBody(required = false) VerifyPaymentRequest request) {
+        String confirmedReference = request != null ? request.confirmedReference() : null;
+        return orderService.verifyAndAcceptPayment(orderNumber, confirmedReference);
     }
 }

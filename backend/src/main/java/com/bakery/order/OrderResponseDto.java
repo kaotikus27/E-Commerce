@@ -20,7 +20,9 @@ public record OrderResponseDto(
         Instant createdAt,
         String cancelReason,
         String notes,
-        String gcashReference
+        String gcashReference,
+        String receiptImagePath,
+        String ocrExtractedRef
 ) {
     public static OrderResponseDto from(Order order) {
         List<OrderItemResponseDto> items = order.getItems().stream().map(OrderItemResponseDto::from).toList();
@@ -28,7 +30,8 @@ public record OrderResponseDto(
                 order.getOrderNumber(), order.getStatus(), order.getGuestName(), order.getGuestPhone(),
                 order.getGuestEmail(), order.getPickupTime(), order.getPaymentMethod(), order.getPaymentStatus(), items,
                 order.getSubtotal(), order.getTax(), order.getTotal(), order.getCreatedAt(),
-                order.getCancelReason(), order.getNotes(), order.getGcashReference()
+                order.getCancelReason(), order.getNotes(), order.getGcashReference(),
+                order.getReceiptImagePath(), order.getOcrExtractedRef()
         );
     }
 }

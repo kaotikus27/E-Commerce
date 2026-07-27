@@ -26,7 +26,7 @@ export class CheckoutService {
       selectedOptions: Object.fromEntries(item.selectedOptions.map(o => [o.name, o.value])),
     }));
 
-    const body = {
+    const orderData = {
       guestName: request.guestName,
       guestPhone: request.guestPhone,
       guestEmail: request.guestEmail,
@@ -37,7 +37,16 @@ export class CheckoutService {
       notes: request.notes,
     };
 
-    return this.api.post<Order>('/orders', body).pipe(
+    // The backend endpoint always expects multipart/form-data (so the same endpoint can
+    // carry an optional GCash receipt screenshot) — the JSON order fields ride along as a
+    // Blob part, per Spring's @RequestPart binding.
+    const formData = new FormData();
+    formData.append('orderData', new Blob([JSON.stringify(orderData)], { type: 'application/json' }));
+    if (request.receiptFile) {
+      formData.append('receiptImage', request.receiptFile);
+    }
+
+    return this.api.post<Order>('/orders', formData).pipe(
       tap(order => this.lastOrder.set(order))
     );
   }

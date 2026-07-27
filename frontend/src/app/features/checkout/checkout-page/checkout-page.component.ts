@@ -61,15 +61,20 @@ import { OrderRequest, PaymentMethod } from '../../../core/models/order.model';
                     <p class="gcash-instructions">
                       Send <strong>₱{{ cart.total().toFixed(2) }}</strong> to
                       <strong>{{ store.gcashAccountName() }}</strong> — {{ store.gcashNumber() }},
-                      then enter the reference number from your GCash receipt below.
+                      then upload a screenshot of your GCash receipt below.
                     </p>
                   } @else {
-                    <p class="gcash-instructions">GCash details aren't set up yet — please ask staff for the account to send payment to, then enter your reference number below.</p>
+                    <p class="gcash-instructions">GCash details aren't set up yet — please ask staff for the account to send payment to, then upload a screenshot of your receipt below.</p>
                   }
                   <div class="field">
-                    <label for="gcash-ref">GCash Reference Number</label>
+                    <label for="receipt-file">GCash Receipt Screenshot</label>
+                    <input id="receipt-file" type="file" accept="image/*" (change)="onReceiptFileSelected($event)" />
+                    @if (receiptFile()) { <span class="file-chosen">Selected: {{ receiptFile()!.name }}</span> }
+                    @if (receiptFileError()) { <span class="field-error">{{ receiptFileError() }}</span> }
+                  </div>
+                  <div class="field">
+                    <label for="gcash-ref">GCash Reference Number (optional — read automatically from your screenshot)</label>
                     <input id="gcash-ref" [(ngModel)]="gcashReference" name="gcashReference" placeholder="e.g. 1234567890123" />
-                    @if (gcashRefError()) { <span class="field-error">{{ gcashRefError() }}</span> }
                   </div>
                 </div>
               }
@@ -125,6 +130,7 @@ import { OrderRequest, PaymentMethod } from '../../../core/models/order.model';
     .gcash-box { background: var(--color-subdued-pistachio); border-radius: var(--radius-sm); padding: 12px; margin: 4px 0 8px; }
     .gcash-instructions { font-size: 13px; line-height: 1.5; margin: 0 0 10px; }
     .char-count { font-size: 12px; color: var(--color-text-muted); align-self: flex-end; }
+    .file-chosen { font-size: 12px; color: var(--color-text-muted); }
     .pickup-line { font-size: 14px; margin-bottom: 8px; }
     .review-row { display: flex; justify-content: space-between; font-size: 14px; padding: 4px 0; }
     .review-row.total { font-weight: 700; font-size: 16px; border-top: 1.5px dashed var(--color-pistachio); margin-top: 8px; padding-top: 8px; color: var(--color-espresso); }
@@ -148,13 +154,20 @@ export class CheckoutPageComponent {
   guestEmail = '';
   paymentMethod: PaymentMethod = 'CASH_ON_PICKUP';
   gcashReference = '';
+  receiptFile = signal<File | null>(null);
   notes = '';
   submitting = signal(false);
   errorMessage = signal('');
   nameError = signal('');
   phoneError = signal('');
   emailError = signal('');
-  gcashRefError = signal('');
+  receiptFileError = signal('');
+
+  onReceiptFileSelected(event: Event) {
+    const file = (event.target as HTMLInputElement).files?.[0] ?? null;
+    this.receiptFile.set(file);
+    if (file) this.receiptFileError.set('');
+  }
 
   /** Validates the guest contact fields, setting per-field inline errors. Returns true if valid. */
   private validateContactFields(): boolean {
@@ -185,14 +198,14 @@ export class CheckoutPageComponent {
 
   submitOrder() {
     this.errorMessage.set('');
-    this.gcashRefError.set('');
+    this.receiptFileError.set('');
 
     if (!this.validateContactFields()) {
       this.errorMessage.set('Please fix the highlighted fields above.');
       return;
     }
-    if (this.paymentMethod === 'GCASH_MANUAL' && !this.gcashReference.trim()) {
-      this.gcashRefError.set('Please enter the reference number from your GCash receipt.');
+    if (this.paymentMethod === 'GCASH_MANUAL' && !this.receiptFile()) {
+      this.receiptFileError.set('Please upload a screenshot of your GCash receipt.');
       this.errorMessage.set('Please fix the highlighted fields above.');
       return;
     }
@@ -210,6 +223,7 @@ export class CheckoutPageComponent {
       pickupTime: this.cart.pickupTime(),
       paymentMethod: this.paymentMethod,
       gcashReference: this.paymentMethod === 'GCASH_MANUAL' ? this.gcashReference.trim() : undefined,
+      receiptFile: this.paymentMethod === 'GCASH_MANUAL' ? this.receiptFile() ?? undefined : undefined,
       items: this.cart.items(),
       subtotal: this.cart.subtotal(),
       tax: this.cart.tax(),

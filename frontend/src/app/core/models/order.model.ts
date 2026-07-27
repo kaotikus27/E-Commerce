@@ -16,6 +16,8 @@ export interface OrderRequest {
   pickupTime: string;
   paymentMethod: PaymentMethod;
   gcashReference?: string;
+  /** GCash receipt screenshot — required by the backend when paymentMethod is GCASH_MANUAL. */
+  receiptFile?: File;
   items: CartItem[];
   subtotal: number;
   tax: number;
@@ -58,6 +60,8 @@ export interface Order {
   cancelReason?: string;
   notes?: string;
   gcashReference?: string;
+  receiptImagePath?: string;
+  ocrExtractedRef?: string;
 }
 
 /** Admin order listing uses the exact same shape the backend returns. */

@@ -81,9 +81,10 @@ export class AdminOrderService {
     );
   }
 
-  /** Staff has cross-checked the GCash reference number — mark paid and move straight to Preparing. */
-  verifyAndAcceptPayment(orderNumber: string) {
-    return this.api.patch<AdminOrder>(`/admin/orders/${orderNumber}/verify-payment`, {}).pipe(
+  /** Staff has cross-checked the GCash reference number — mark paid and move straight to Preparing.
+   *  confirmedReference (if the admin edited/corrected it) becomes the order's official gcashReference. */
+  verifyAndAcceptPayment(orderNumber: string, confirmedReference?: string) {
+    return this.api.patch<AdminOrder>(`/admin/orders/${orderNumber}/verify-payment`, { confirmedReference }).pipe(
       tap(updated => {
         this.orders.update(list => list.map(o => (o.id === updated.id ? updated : o)));
       }),

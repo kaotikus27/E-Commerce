@@ -20,8 +20,8 @@ spring:
       path: /h2-console
   servlet:
     multipart:
-      max-file-size: 5MB
-      max-request-size: 5MB
+      max-file-size: 10MB
+      max-request-size: 10MB
 
 app:
   cors:
@@ -29,3 +29,5 @@ app:
   jwt:
     secret: "bakery-dev-secret-key-change-me-before-production-0123456789"
     expiration-ms: 86400000
+  ocr:
+    tessdata-path: "C:/Users/Public.DESKTOP-3A1LBHM/AppData/Local/Programs/Tesseract-OCR/tessdata"

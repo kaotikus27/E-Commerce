@@ -51,6 +51,12 @@ public class Order {
     /** Customer-supplied GCash transaction reference number, set only for GCASH_MANUAL orders. */
     private String gcashReference;
 
+    /** Path to the uploaded GCash receipt screenshot (e.g. "/uploads/receipts/<uuid>.png"), served statically. */
+    private String receiptImagePath;
+
+    /** Raw reference number Tess4J read off the receipt image, kept separate from gcashReference for admin cross-check. */
+    private String ocrExtractedRef;
+
     @Builder.Default
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<OrderItem> items = new ArrayList<>();
