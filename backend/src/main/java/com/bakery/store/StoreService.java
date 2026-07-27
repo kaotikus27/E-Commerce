@@ -21,7 +21,9 @@ public class StoreService {
                 storeSettingsService.isAcceptingOrders(),
                 storeSettingsService.todayHoursLabel(),
                 settings.orderLeadTimeMinutes(),
-                settings.schedule()
+                settings.schedule(),
+                settings.gcashAccountName(),
+                settings.gcashNumber()
         );
     }
 }

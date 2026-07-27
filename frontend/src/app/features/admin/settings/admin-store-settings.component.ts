@@ -74,6 +74,19 @@ interface DayForm {
         <label for="cutoff">Cutoff Before Store Close (minutes)</label>
         <input id="cutoff" type="number" min="0" [(ngModel)]="cutoffMinutes" name="cutoffMinutes" />
       </div>
+    </div>
+
+    <div class="card section">
+      <h3>GCash Payment Details</h3>
+      <p class="hint">Shown to customers at checkout when they choose GCash, so they know who to send payment to.</p>
+      <div class="field">
+        <label for="gcash-name">Account Name</label>
+        <input id="gcash-name" [(ngModel)]="gcashAccountName" name="gcashAccountName" placeholder="Juan Dela Cruz" />
+      </div>
+      <div class="field">
+        <label for="gcash-number">GCash Number</label>
+        <input id="gcash-number" [(ngModel)]="gcashNumber" name="gcashNumber" placeholder="09XX XXX XXXX" />
+      </div>
       <button class="btn btn-primary btn-block" [disabled]="saving" (click)="save()">
         {{ saving ? 'Saving…' : 'Save Store Schedule' }}
       </button>
@@ -100,6 +113,7 @@ interface DayForm {
     .section { padding: 20px; margin-bottom: 16px; }
     .pause-section { text-align: center; }
     .status-line { font-weight: 700; margin-bottom: 12px; }
+    .hint { font-size: 13px; color: var(--color-text-muted); margin-bottom: 14px; }
     .paused { color: var(--color-status-closed); }
     .accepting { color: var(--color-status-open); }
     .day-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 0; border-bottom: 1px solid var(--color-subdued-pistachio); }
@@ -121,6 +135,8 @@ export class AdminStoreSettingsComponent implements OnInit {
   days: DayForm[] = [];
   leadTimeMinutes = 15;
   cutoffMinutes = 0;
+  gcashAccountName = '';
+  gcashNumber = '';
   saving = false;
 
   newClosureDate = '';
@@ -138,6 +154,8 @@ export class AdminStoreSettingsComponent implements OnInit {
         this.hydrateForm(s.schedule);
         this.leadTimeMinutes = s.orderLeadTimeMinutes;
         this.cutoffMinutes = s.stopOrderingBeforeCloseMinutes;
+        this.gcashAccountName = s.gcashAccountName ?? '';
+        this.gcashNumber = s.gcashNumber ?? '';
       }
     });
   }
@@ -185,6 +203,8 @@ export class AdminStoreSettingsComponent implements OnInit {
       schedule,
       orderLeadTimeMinutes: this.leadTimeMinutes,
       stopOrderingBeforeCloseMinutes: this.cutoffMinutes,
+      gcashAccountName: this.gcashAccountName.trim(),
+      gcashNumber: this.gcashNumber.trim(),
     }).subscribe(res => {
       this.saving = false;
       if (res) this.notifications.success('Store schedule saved.');

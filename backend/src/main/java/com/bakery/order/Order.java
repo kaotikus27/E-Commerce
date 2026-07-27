@@ -48,6 +48,9 @@ public class Order {
     @Column(length = 150)
     private String notes;
 
+    /** Customer-supplied GCash transaction reference number, set only for GCASH_MANUAL orders. */
+    private String gcashReference;
+
     @Builder.Default
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<OrderItem> items = new ArrayList<>();

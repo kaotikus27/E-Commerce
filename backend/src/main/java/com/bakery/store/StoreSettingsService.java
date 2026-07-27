@@ -37,6 +37,8 @@ public class StoreSettingsService {
         settings.setSchedule(new ArrayList<>(request.schedule().stream().map(DayScheduleDto::toEntity).toList()));
         settings.setOrderLeadTimeMinutes(request.orderLeadTimeMinutes());
         settings.setStopOrderingBeforeCloseMinutes(request.stopOrderingBeforeCloseMinutes());
+        settings.setGcashAccountName(request.gcashAccountName());
+        settings.setGcashNumber(request.gcashNumber());
         return StoreSettingsDto.from(storeSettingsRepository.save(settings));
     }
 

@@ -26,8 +26,13 @@ const ORIGINAL_TITLE = 'Home by Bami — Admin';
           <div class="order-card card">
             <ng-container *ngTemplateOutlet="cardHeader; context: { order }"></ng-container>
             <div class="actions">
-              <button class="btn btn-primary btn-sm" (click)="advance(order, 'PREPARING')">Accept Order</button>
-              <button class="btn btn-secondary btn-sm" (click)="openReject(order)">Reject</button>
+              @if (order.paymentStatus === 'PENDING_VERIFICATION') {
+                <button class="btn btn-primary btn-sm" (click)="verifyAndAccept(order)">Verify &amp; Accept</button>
+                <button class="btn btn-secondary btn-sm" (click)="openReject(order)">Reject Payment</button>
+              } @else {
+                <button class="btn btn-primary btn-sm" (click)="advance(order, 'PREPARING')">Accept Order</button>
+                <button class="btn btn-secondary btn-sm" (click)="openReject(order)">Reject</button>
+              }
             </div>
           </div>
         } @empty {
@@ -72,9 +77,12 @@ const ORIGINAL_TITLE = 'Home by Bami — Admin';
       <div class="customer">{{ order.guestName || 'Guest' }} · {{ order.guestPhone }}</div>
       <div class="pickup">Pickup: {{ order.pickupTime }}</div>
       <div class="payment-row">
-        <span class="payment">{{ order.paymentMethod === 'CARD' ? 'Card' : 'Cash on Pickup' }}</span>
-        <span class="pay-status" [class.paid]="order.paymentStatus === 'PAID'">{{ order.paymentStatus }}</span>
+        <span class="payment">{{ order.paymentMethod === 'GCASH_MANUAL' ? 'GCash' : 'Cash on Pickup' }}</span>
+        <span class="pay-status" [class.paid]="order.paymentStatus === 'PAID'" [class.pending]="order.paymentStatus === 'PENDING_VERIFICATION'">{{ order.paymentStatus }}</span>
       </div>
+      @if (order.gcashReference) {
+        <div class="gcash-ref">Ref #: <strong>{{ order.gcashReference }}</strong></div>
+      }
       @if (order.paymentStatus === 'UNPAID' && order.paymentMethod === 'CASH_ON_PICKUP') {
         <button class="btn btn-secondary btn-sm mark-paid" (click)="markPaid(order)">Mark as Paid</button>
       }
@@ -88,12 +96,14 @@ const ORIGINAL_TITLE = 'Home by Bami — Admin';
       }
     </ng-template>
 
-    <app-modal [open]="rejecting() !== null" title="Reject Order" (close)="rejecting.set(null)">
+    <app-modal [open]="rejecting() !== null" [title]="rejecting()?.paymentStatus === 'PENDING_VERIFICATION' ? 'Reject Payment' : 'Reject Order'" (close)="rejecting.set(null)">
       <div class="field">
         <label for="reject-reason">Reason</label>
-        <input id="reject-reason" [(ngModel)]="rejectReason" name="rejectReason" placeholder="e.g. Item sold out" />
+        <input id="reject-reason" [(ngModel)]="rejectReason" name="rejectReason" placeholder="e.g. Item sold out, payment not received" />
       </div>
-      <button class="btn btn-primary btn-block" (click)="confirmReject()">Reject Order</button>
+      <button class="btn btn-primary btn-block" (click)="confirmReject()">
+        {{ rejecting()?.paymentStatus === 'PENDING_VERIFICATION' ? 'Reject Payment' : 'Reject Order' }}
+      </button>
     </app-modal>
   `,
   styles: [`
@@ -113,6 +123,8 @@ const ORIGINAL_TITLE = 'Home by Bami — Admin';
     .payment { font-size: 12px; color: var(--color-text-muted); }
     .pay-status { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: var(--radius-pill); background: var(--color-subdued-pistachio); color: var(--color-status-closed); }
     .pay-status.paid { color: var(--color-status-open); }
+    .pay-status.pending { color: var(--color-status-pending); }
+    .gcash-ref { font-size: 12px; color: var(--color-text-muted); margin-bottom: 8px; }
     .mark-paid { width: 100%; margin-bottom: 10px; }
     .items { list-style: none; padding: 0; margin: 0 0 10px; font-size: 13px; }
     .notes { font-size: 12px; background: var(--color-subdued-pistachio); border-radius: var(--radius-sm); padding: 6px 8px; margin-bottom: 10px; }
@@ -162,6 +174,12 @@ export class AdminOrdersBoardComponent implements OnInit, OnDestroy {
   advance(order: AdminOrder, status: 'PREPARING' | 'READY' | 'COMPLETED') {
     this.orderService.updateStatus(order.id, status).subscribe(updated => {
       if (updated) this.notifications.success(`Order #${order.id} moved to ${status}.`);
+    });
+  }
+
+  verifyAndAccept(order: AdminOrder) {
+    this.orderService.verifyAndAcceptPayment(order.id).subscribe(updated => {
+      if (updated) this.notifications.success(`Order #${order.id} payment verified — sent to kitchen.`);
     });
   }
 

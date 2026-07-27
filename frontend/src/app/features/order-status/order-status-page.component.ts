@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CheckoutService } from '../../core/services/checkout.service';
 import { StoreService } from '../../core/services/store.service';
-import { Order, OrderStatus } from '../../core/models/order.model';
+import { Order } from '../../core/models/order.model';
 import { OrderStatusStepperComponent } from '../../shared/components/order-status-stepper/order-status-stepper.component';
 
 const POLL_MS = 6000;
@@ -89,14 +89,23 @@ export class OrderStatusPageComponent implements OnInit, OnDestroy {
     });
   }
 
+  /** Context-aware message — combines fulfillment status with payment status so a customer
+   *  waiting on GCash verification isn't left wondering why nothing seems to be happening. */
   statusMessage() {
-    const messages: Record<OrderStatus, string> = {
-      RECEIVED: 'Order received! We’ve got it and are queuing it up.',
-      PREPARING: 'Our bakers are baking/brewing your order now.',
-      READY: 'Your order is ready for pickup!',
-      COMPLETED: 'Order picked up. Enjoy!',
-      CANCELLED: 'This order was cancelled.',
-    };
-    return messages[this.order()!.status];
+    const order = this.order()!;
+
+    if (order.status === 'RECEIVED') {
+      if (order.paymentStatus === 'PENDING_VERIFICATION') {
+        return "We're verifying your GCash payment. Please hang tight!";
+      }
+      if (order.paymentStatus === 'UNPAID') {
+        return 'Order received! Please prepare exact cash on pickup.';
+      }
+      return 'Payment confirmed! Queueing your order for preparation.';
+    }
+    if (order.status === 'PREPARING') return 'Our bakers are baking/brewing your order now.';
+    if (order.status === 'READY') return 'Your order is ready! Pick up at the counter.';
+    if (order.status === 'COMPLETED') return 'Order picked up. Enjoy!';
+    return '';
   }
 }

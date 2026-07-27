@@ -57,6 +57,9 @@ import { toAbsoluteImageUrl } from '../../core/utils/image-url.util';
               <div class="summary-row total"><span>Total</span><span>₱{{ cart.total().toFixed(2) }}</span></div>
             </div>
 
+            @if (!store.isOpen()) {
+              <p class="closed-banner">We're closed right now — checkout is unavailable until we re-open.</p>
+            }
             <button class="btn btn-primary btn-block" [disabled]="!store.isOpen()" (click)="goToCheckout()">
               {{ store.isOpen() ? 'Proceed to Checkout' : "We're Closed Right Now" }}
             </button>
@@ -88,6 +91,7 @@ import { toAbsoluteImageUrl } from '../../core/utils/image-url.util';
     .summary { border-top: 1.5px dashed var(--color-subdued-pistachio); padding-top: 12px; margin-bottom: 16px; }
     .summary-row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 4px; }
     .summary-row.total { font-weight: 700; font-size: 16px; color: var(--color-text-chocolate); }
+    .closed-banner { background: var(--color-subdued-pistachio); color: var(--color-status-closed); font-size: 13px; font-weight: 700; text-align: center; padding: 10px; border-radius: var(--radius-sm); margin-bottom: 12px; }
   `],
 })
 export class CartDrawerComponent {

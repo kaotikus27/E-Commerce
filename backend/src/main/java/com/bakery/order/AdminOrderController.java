@@ -28,4 +28,9 @@ public class AdminOrderController {
     public OrderResponseDto markPaid(@PathVariable String orderNumber) {
         return orderService.markPaid(orderNumber);
     }
+
+    @PatchMapping("/{orderNumber}/verify-payment")
+    public OrderResponseDto verifyAndAcceptPayment(@PathVariable String orderNumber) {
+        return orderService.verifyAndAcceptPayment(orderNumber);
+    }
 }

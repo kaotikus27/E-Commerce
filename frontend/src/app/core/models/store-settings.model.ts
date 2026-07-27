@@ -13,6 +13,8 @@ export interface StoreSettings {
   schedule: DaySchedule[];
   orderLeadTimeMinutes: number;
   stopOrderingBeforeCloseMinutes: number;
+  gcashAccountName: string | null;
+  gcashNumber: string | null;
 }
 
 export interface StoreClosure {
@@ -31,4 +33,6 @@ export interface StoreInfo {
   todayHoursLabel: string;
   orderLeadTimeMinutes: number;
   schedule: DaySchedule[];
+  gcashAccountName: string | null;
+  gcashNumber: string | null;
 }

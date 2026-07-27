@@ -25,6 +25,8 @@ export class StoreService {
   readonly todayHoursLabel = computed(() => this.info()?.todayHoursLabel ?? '…');
   readonly leadTimeMinutes = computed(() => this.info()?.orderLeadTimeMinutes ?? 15);
   readonly schedule = computed<DaySchedule[]>(() => this.info()?.schedule ?? []);
+  readonly gcashAccountName = computed(() => this.info()?.gcashAccountName ?? '');
+  readonly gcashNumber = computed(() => this.info()?.gcashNumber ?? '');
 
   constructor() {
     this.poll();

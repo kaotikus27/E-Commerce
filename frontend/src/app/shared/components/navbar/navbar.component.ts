@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { CartService } from '../../../core/services/cart.service';
-import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-navbar',
@@ -38,16 +37,16 @@ import { AuthService } from '../../../core/services/auth.service';
         </div>
 
         <div class="nav-actions">
-          <button class="icon-btn" (click)="goToAccount()" aria-label="Account">👤</button>
           <button class="icon-btn cart-btn" (click)="cart.toggleDrawer()" aria-label="Open cart">
-            🛍️<span class="count-badge" *ngIf="cart.itemCount() > 0">{{ cart.itemCount() }}</span>
+            <img src="assets/shopping_cart.png" alt="" class="cart-icon" />
+            <span class="count-badge" *ngIf="cart.itemCount() > 0">{{ cart.itemCount() }}</span>
           </button>
         </div>
       </div>
     </nav>
   `,
   styles: [`
-    .navbar { background: var(--color-white); box-shadow: var(--shadow-card); position: sticky; top: 0; z-index: 500; }
+    .navbar { background: var(--color-white); box-shadow: var(--shadow-card); }
     .nav-row { display: flex; align-items: center; gap: 12px; min-height: 64px; flex-wrap: wrap; }
     .logo { display: flex; align-items: center; height: 44px; }
     .logo img { height: 100%; width: auto; object-fit: contain; }
@@ -63,6 +62,7 @@ import { AuthService } from '../../../core/services/auth.service';
     .search-box input { flex: 1; min-height: 44px; border-radius: var(--radius-pill); border: 1.5px solid var(--color-border-subtle); padding: 0 16px; font-size: 16px; font-family: var(--font-body); }
     .nav-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
     .icon-btn { position: relative; background: none; border: none; font-size: 20px; min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+    .cart-icon { width: 22px; height: 22px; }
     .count-badge {
       position: absolute; top: 2px; right: 2px; background: var(--color-terracotta); color: var(--color-white);
       font-size: 10px; font-weight: 700; border-radius: 50%; width: 16px; height: 16px;
@@ -77,7 +77,6 @@ import { AuthService } from '../../../core/services/auth.service';
 })
 export class NavbarComponent {
   cart = inject(CartService);
-  auth = inject(AuthService);
   router = inject(Router);
 
   mobileOpen = signal(false);
@@ -86,9 +85,5 @@ export class NavbarComponent {
   search() {
     this.mobileOpen.set(false);
     this.router.navigate(['/shop'], { queryParams: { q: this.searchTerm } });
-  }
-
-  goToAccount() {
-    this.router.navigate([this.auth.isAuthenticated() ? '/account' : '/login']);
   }
 }

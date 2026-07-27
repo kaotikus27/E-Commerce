@@ -81,6 +81,19 @@ export class AdminOrderService {
     );
   }
 
+  /** Staff has cross-checked the GCash reference number — mark paid and move straight to Preparing. */
+  verifyAndAcceptPayment(orderNumber: string) {
+    return this.api.patch<AdminOrder>(`/admin/orders/${orderNumber}/verify-payment`, {}).pipe(
+      tap(updated => {
+        this.orders.update(list => list.map(o => (o.id === updated.id ? updated : o)));
+      }),
+      catchError(() => {
+        this.notifications.error('Could not verify the payment.');
+        return of(null);
+      })
+    );
+  }
+
   /** Client-side search over the archived (completed/cancelled) list by name, order #, or phone. */
   searchHistory(query: string): AdminOrder[] {
     const q = query.trim().toLowerCase();

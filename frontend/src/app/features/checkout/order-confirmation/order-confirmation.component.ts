@@ -26,7 +26,10 @@ import { ChibiMascotComponent } from '../../../shared/components/chibi-mascot/ch
 
           <div class="details">
             <p><strong>Pickup Time:</strong> {{ order()!.pickupTime }}</p>
-            <p><strong>Payment:</strong> {{ order()!.paymentMethod === 'CARD' ? 'Card' : 'Cash on Pickup' }}</p>
+            <p><strong>Payment:</strong> {{ order()!.paymentMethod === 'GCASH_MANUAL' ? 'GCash' : 'Cash on Pickup' }}</p>
+            @if (order()!.paymentStatus === 'PENDING_VERIFICATION') {
+              <p class="pending-notice">We're verifying your GCash payment — you'll see this update once it's confirmed.</p>
+            }
             @if (order()!.notes) {
               <p><strong>Notes:</strong> {{ order()!.notes }}</p>
             }
@@ -58,6 +61,7 @@ import { ChibiMascotComponent } from '../../../shared/components/chibi-mascot/ch
     .mascot { margin: 0 auto 8px; }
     .order-id { color: var(--color-sage-700); font-weight: 700; margin-bottom: 20px; }
     .cancelled-notice { color: var(--color-status-closed); font-weight: 600; margin-bottom: 20px; }
+    .pending-notice { color: var(--color-status-pending); font-weight: 600; font-size: 13px; }
     .details { text-align: left; margin: 20px 0; font-size: 14px; }
     .items { text-align: left; border-top: 1.5px dashed var(--color-subdued-pistachio); padding-top: 12px; margin-bottom: 20px; }
     .review-row { display: flex; justify-content: space-between; font-size: 14px; padding: 4px 0; }

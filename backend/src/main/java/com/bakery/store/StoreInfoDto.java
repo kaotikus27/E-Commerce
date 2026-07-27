@@ -10,6 +10,8 @@ public record StoreInfoDto(
         boolean open,
         String todayHoursLabel,
         int orderLeadTimeMinutes,
-        List<DayScheduleDto> schedule
+        List<DayScheduleDto> schedule,
+        String gcashAccountName,
+        String gcashNumber
 ) {
 }

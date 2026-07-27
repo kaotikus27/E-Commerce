@@ -1,5 +1,5 @@
 package com.bakery.order;
 
 public enum PaymentStatus {
-    PAID, UNPAID
+    UNPAID, PENDING_VERIFICATION, PAID, FAILED, REFUNDED
 }

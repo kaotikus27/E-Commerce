@@ -5,10 +5,9 @@ import { Router } from '@angular/router';
 import { CartService } from '../../../core/services/cart.service';
 import { CheckoutService } from '../../../core/services/checkout.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { StoreService } from '../../../core/services/store.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { OrderRequest } from '../../../core/models/order.model';
-
-type PaymentMethod = 'CARD' | 'CASH_ON_PICKUP';
+import { OrderRequest, PaymentMethod } from '../../../core/models/order.model';
 
 @Component({
   selector: 'app-checkout-page',
@@ -49,19 +48,31 @@ type PaymentMethod = 'CARD' | 'CASH_ON_PICKUP';
             <h3>2. Payment Method</h3>
             <div class="payment-options">
               <label class="radio-row">
-                <input type="radio" name="pay" value="CARD" [(ngModel)]="paymentMethod" />
-                Credit / Debit Card
-              </label>
-              @if (paymentMethod === 'CARD') {
-                <div class="field">
-                  <label for="card">Card Number</label>
-                  <input id="card" [(ngModel)]="cardNumber" name="cardNumber" placeholder="4242 4242 4242 4242" maxlength="19" />
-                </div>
-              }
-              <label class="radio-row">
                 <input type="radio" name="pay" value="CASH_ON_PICKUP" [(ngModel)]="paymentMethod" />
                 Cash on Pickup
               </label>
+              <label class="radio-row">
+                <input type="radio" name="pay" value="GCASH_MANUAL" [(ngModel)]="paymentMethod" />
+                GCash
+              </label>
+              @if (paymentMethod === 'GCASH_MANUAL') {
+                <div class="gcash-box">
+                  @if (store.gcashNumber()) {
+                    <p class="gcash-instructions">
+                      Send <strong>₱{{ cart.total().toFixed(2) }}</strong> to
+                      <strong>{{ store.gcashAccountName() }}</strong> — {{ store.gcashNumber() }},
+                      then enter the reference number from your GCash receipt below.
+                    </p>
+                  } @else {
+                    <p class="gcash-instructions">GCash details aren't set up yet — please ask staff for the account to send payment to, then enter your reference number below.</p>
+                  }
+                  <div class="field">
+                    <label for="gcash-ref">GCash Reference Number</label>
+                    <input id="gcash-ref" [(ngModel)]="gcashReference" name="gcashReference" placeholder="e.g. 1234567890123" />
+                    @if (gcashRefError()) { <span class="field-error">{{ gcashRefError() }}</span> }
+                  </div>
+                </div>
+              }
             </div>
           </div>
 
@@ -111,6 +122,8 @@ type PaymentMethod = 'CARD' | 'CASH_ON_PICKUP';
     .hint a { color: var(--color-sage-700); font-weight: 700; text-decoration: underline; }
     .payment-options { display: flex; flex-direction: column; gap: 8px; }
     .radio-row { display: flex; align-items: center; gap: 8px; font-weight: 600; min-height: 44px; }
+    .gcash-box { background: var(--color-subdued-pistachio); border-radius: var(--radius-sm); padding: 12px; margin: 4px 0 8px; }
+    .gcash-instructions { font-size: 13px; line-height: 1.5; margin: 0 0 10px; }
     .char-count { font-size: 12px; color: var(--color-text-muted); align-self: flex-end; }
     .pickup-line { font-size: 14px; margin-bottom: 8px; }
     .review-row { display: flex; justify-content: space-between; font-size: 14px; padding: 4px 0; }
@@ -123,6 +136,7 @@ export class CheckoutPageComponent {
   cart = inject(CartService);
   checkout = inject(CheckoutService);
   auth = inject(AuthService);
+  store = inject(StoreService);
   notifications = inject(NotificationService);
   router = inject(Router);
 
@@ -132,14 +146,15 @@ export class CheckoutPageComponent {
   guestName = '';
   guestPhone = '';
   guestEmail = '';
-  paymentMethod: PaymentMethod = 'CARD';
-  cardNumber = '';
+  paymentMethod: PaymentMethod = 'CASH_ON_PICKUP';
+  gcashReference = '';
   notes = '';
   submitting = signal(false);
   errorMessage = signal('');
   nameError = signal('');
   phoneError = signal('');
   emailError = signal('');
+  gcashRefError = signal('');
 
   /** Validates the guest contact fields, setting per-field inline errors. Returns true if valid. */
   private validateContactFields(): boolean {
@@ -168,15 +183,17 @@ export class CheckoutPageComponent {
     return valid;
   }
 
-  async submitOrder() {
+  submitOrder() {
     this.errorMessage.set('');
+    this.gcashRefError.set('');
 
     if (!this.validateContactFields()) {
       this.errorMessage.set('Please fix the highlighted fields above.');
       return;
     }
-    if (this.paymentMethod === 'CARD' && this.cardNumber.replace(/\s/g, '').length < 12) {
-      this.errorMessage.set('Please enter a valid card number.');
+    if (this.paymentMethod === 'GCASH_MANUAL' && !this.gcashReference.trim()) {
+      this.gcashRefError.set('Please enter the reference number from your GCash receipt.');
+      this.errorMessage.set('Please fix the highlighted fields above.');
       return;
     }
     if (!this.cart.pickupTime()) {
@@ -185,39 +202,32 @@ export class CheckoutPageComponent {
     }
 
     this.submitting.set(true);
-    try {
-      if (this.paymentMethod === 'CARD') {
-        await this.checkout.tokenizePayment(this.cardNumber);
-      }
 
-      const request: OrderRequest = {
-        guestName: this.auth.user()?.name ?? this.guestName,
-        guestPhone: this.guestPhone,
-        guestEmail: this.guestEmail.trim() || undefined,
-        pickupTime: this.cart.pickupTime(),
-        paymentMethod: this.paymentMethod,
-        items: this.cart.items(),
-        subtotal: this.cart.subtotal(),
-        tax: this.cart.tax(),
-        total: this.cart.total(),
-        notes: this.notes.trim() || undefined,
-      };
+    const request: OrderRequest = {
+      guestName: this.auth.user()?.name ?? this.guestName,
+      guestPhone: this.guestPhone,
+      guestEmail: this.guestEmail.trim() || undefined,
+      pickupTime: this.cart.pickupTime(),
+      paymentMethod: this.paymentMethod,
+      gcashReference: this.paymentMethod === 'GCASH_MANUAL' ? this.gcashReference.trim() : undefined,
+      items: this.cart.items(),
+      subtotal: this.cart.subtotal(),
+      tax: this.cart.tax(),
+      total: this.cart.total(),
+      notes: this.notes.trim() || undefined,
+    };
 
-      this.checkout.placeOrder(request).subscribe({
-        next: order => {
-          this.cart.clear();
-          this.notifications.success('Order placed!');
-          this.router.navigate(['/order-confirmation', order.id]);
-          this.submitting.set(false);
-        },
-        error: () => {
-          this.errorMessage.set('Could not place your order — the server may be unreachable. Please try again.');
-          this.submitting.set(false);
-        },
-      });
-    } catch {
-      this.errorMessage.set('Something went wrong processing payment. Please try again.');
-      this.submitting.set(false);
-    }
+    this.checkout.placeOrder(request).subscribe({
+      next: order => {
+        this.cart.clear();
+        this.notifications.success('Order placed!');
+        this.router.navigate(['/order-confirmation', order.id]);
+        this.submitting.set(false);
+      },
+      error: () => {
+        this.errorMessage.set('Could not place your order — the server may be unreachable. Please try again.');
+        this.submitting.set(false);
+      },
+    });
   }
 }

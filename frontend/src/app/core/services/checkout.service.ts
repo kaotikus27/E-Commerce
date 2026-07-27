@@ -10,13 +10,6 @@ export class CheckoutService {
 
   constructor(private api: ApiService) {}
 
-  /** Simulates tokenizing a card via a payment gateway (Stripe/PayPal placeholder). */
-  tokenizePayment(cardNumber: string): Promise<string> {
-    return new Promise(resolve => {
-      setTimeout(() => resolve('tok_' + cardNumber.slice(-4) + '_' + Date.now()), 500);
-    });
-  }
-
   /**
    * Places the order against the real backend. Deliberately does NOT fall back to a
    * fake local order on error — a checkout failure needs to be visible to the customer
@@ -39,6 +32,7 @@ export class CheckoutService {
       guestEmail: request.guestEmail,
       pickupTime: request.pickupTime,
       paymentMethod: request.paymentMethod,
+      gcashReference: request.gcashReference,
       items,
       notes: request.notes,
     };

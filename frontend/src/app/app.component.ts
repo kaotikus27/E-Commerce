@@ -14,8 +14,10 @@ import { CartDrawerComponent } from './features/cart/cart-drawer.component';
   imports: [RouterOutlet, NavbarComponent, FooterComponent, ToastContainerComponent, LocationBannerComponent, CartDrawerComponent],
   template: `
     @if (!isAdminRoute()) {
-      <app-location-banner></app-location-banner>
-      <app-navbar></app-navbar>
+      <header class="site-header">
+        <app-location-banner></app-location-banner>
+        <app-navbar></app-navbar>
+      </header>
     }
     <main>
       <router-outlet></router-outlet>
@@ -26,6 +28,9 @@ import { CartDrawerComponent } from './features/cart/cart-drawer.component';
     }
     <app-toast-container></app-toast-container>
   `,
+  styles: [`
+    .site-header { position: sticky; top: 0; z-index: 500; }
+  `],
 })
 export class AppComponent {
   private router = inject(Router);

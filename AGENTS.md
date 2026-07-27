@@ -68,7 +68,7 @@ Most traffic arrives from in-app social browsers.
 
 ---
 
-## Compliance Snapshot — audited 2026-07-24, updated 2026-07-24 (fix pass)
+## Compliance Snapshot — audited 2026-07-24, updated 2026-07-27 (payment flow overhaul)
 
 Legend: ✅ Pass · ⚠️ Partial · ❌ Gap
 
@@ -102,10 +102,11 @@ Legend: ✅ Pass · ⚠️ Partial · ❌ Gap
 ### Phase 4
 | Item | Status | Evidence |
 |---|---|---|
-| Payment method toggle | ✅ | Unchanged |
+| Payment method toggle | ✅ | Fixed — Cash on Pickup vs GCash (manual reference-number verification), replacing the old fake "Credit/Debit Card" option that just ran a stub tokenizer |
 | Success → tracking redirect | ✅ | Unchanged |
-| Decline → stay + clear message, cart preserved | ⚠️ | Unchanged — error-handling shape is correct but `tokenizePayment()` is still a stub that always resolves (no real gateway; deferred, see below) |
-| Cash on Pickup → UNPAID, non-blocking | ⚠️ | Unchanged — no explicit `paymentStatus` field modeled; not touched in this pass |
+| Decline/reject → stay + clear message, cart preserved | ✅ | Fixed — `tokenizePayment()` stub removed entirely (there was nothing real to decline). GCash orders that fail staff verification are cancelled with a reason via the existing reject flow; payment status is set to `FAILED` automatically (`OrderService.updateStatus()`) |
+| Cash on Pickup → UNPAID, non-blocking | ✅ | Fixed — `PaymentStatus` now models `UNPAID / PENDING_VERIFICATION / PAID / FAILED / REFUNDED` as a status independent of order fulfillment status (`RECEIVED → PREPARING → READY → COMPLETED`, separately `CANCELLED`). Cash orders start `RECEIVED` + `UNPAID` and are never blocked from moving through the kitchen |
+| GCash orders held for manual verification | ✅ | New — GCash orders start `PENDING_VERIFICATION`, not `PAID`, specifically so kitchen staff never prep an order before someone has actually confirmed money arrived. Admin board shows the customer's GCash reference number on the card; staff either "Verify & Accept" (→ `PAID` + `PREPARING` in one step) or "Reject Payment" (→ `CANCELLED` + `FAILED`) |
 
 ### Phase 5
 | Item | Status | Evidence |
@@ -132,9 +133,10 @@ Legend: ✅ Pass · ⚠️ Partial · ❌ Gap
 ## Known gaps, in rough priority order
 
 1. **No priced modifiers** (Phase 1) — needs a price-delta per customization option: model change (frontend `Customization`/backend `Customization` embeddable), seeder update, cart line-total math, and checkout total math on both ends. Meaningfully bigger than everything else on this list — treat as its own mini-project, not a quick fix.
-2. **No real payment gateway** (Phase 4) — `tokenizePayment()` is an intentional stub; integrating a real gateway (Stripe/PayMongo/GCash) is a substantially bigger project requiring real merchant/API credentials from the business owner, not something to build speculatively.
-3. **No phone number on the tracking page** (Phase 5) — blocked on there being an actual store phone number to show; add it the moment one exists (`StoreService.ts` + `StoreService.java` + `order-status-page.component.ts`).
-4. **Required-customization "silent default" behavior** (Phase 1) — low priority, arguably fine as-is; only revisit if product explicitly wants to force a deliberate choice instead of a pre-selected default.
-5. **Seeded demo images aren't WebP** (Phase 6) — low priority; only the demo/seed data, not a systemic issue (real admin-uploaded images already support webp).
+2. **No automated payment gateway** (Phase 4) — the fake card stub is gone; payment is now Cash on Pickup or manually-verified GCash (customer enters a reference number, staff cross-checks their own GCash app before accepting). A real automated gateway (PayMongo/Xendit/GCash API with webhooks) is still a substantially bigger project requiring real merchant/API credentials from the business owner — deliberately deferred, not built speculatively. The `PaymentStatus.REFUNDED` state also exists in the model but has no dedicated refund action/UI yet — reachable only via a direct API call today.
+3. **GCash account number/name default to blank** (Phase 4) — admin must set them once via Store Settings → GCash Payment Details before the checkout page has anything real to show customers; until then it falls back to "ask staff for the account to send payment to."
+4. **No phone number on the tracking page** (Phase 5) — blocked on there being an actual store phone number to show; add it the moment one exists (`StoreService.ts` + `StoreService.java` + `order-status-page.component.ts`).
+5. **Required-customization "silent default" behavior** (Phase 1) — low priority, arguably fine as-is; only revisit if product explicitly wants to force a deliberate choice instead of a pre-selected default.
+6. **Seeded demo images aren't WebP** (Phase 6) — low priority; only the demo/seed data, not a systemic issue (real admin-uploaded images already support webp).
 
 Update the status column and this priority list in the same change that closes an item.

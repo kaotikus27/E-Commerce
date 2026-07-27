@@ -1,5 +1,5 @@
 package com.bakery.order;
 
 public enum PaymentMethod {
-    CARD, CASH_ON_PICKUP
+    CASH_ON_PICKUP, GCASH_MANUAL
 }

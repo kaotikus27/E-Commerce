@@ -31,6 +31,11 @@ public class OrderService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Online ordering is currently closed.");
         }
 
+        if (request.paymentMethod() == PaymentMethod.GCASH_MANUAL
+                && (request.gcashReference() == null || request.gcashReference().isBlank())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "GCash reference number is required for this payment method.");
+        }
+
         Order order = Order.builder()
                 .orderNumber(generateOrderNumber())
                 .guestName(request.guestName())
@@ -38,10 +43,12 @@ public class OrderService {
                 .guestEmail(request.guestEmail())
                 .pickupTime(request.pickupTime())
                 .paymentMethod(request.paymentMethod())
-                .paymentStatus(request.paymentMethod() == PaymentMethod.CARD ? PaymentStatus.PAID : PaymentStatus.UNPAID)
+                .paymentStatus(request.paymentMethod() == PaymentMethod.GCASH_MANUAL
+                        ? PaymentStatus.PENDING_VERIFICATION : PaymentStatus.UNPAID)
                 .status(OrderStatus.RECEIVED)
                 .createdAt(Instant.now())
                 .notes(request.notes())
+                .gcashReference(request.paymentMethod() == PaymentMethod.GCASH_MANUAL ? request.gcashReference() : null)
                 .build();
 
         BigDecimal subtotal = BigDecimal.ZERO;
@@ -95,6 +102,12 @@ public class OrderService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order " + orderNumber + " not found"));
         order.setStatus(status);
         order.setCancelReason(status == OrderStatus.CANCELLED ? cancelReason : null);
+        // Cancelling an order that was still awaiting GCash verification means that payment
+        // never checked out — reflect that in the payment state rather than leaving it stuck
+        // at PENDING_VERIFICATION forever.
+        if (status == OrderStatus.CANCELLED && order.getPaymentStatus() == PaymentStatus.PENDING_VERIFICATION) {
+            order.setPaymentStatus(PaymentStatus.FAILED);
+        }
         return OrderResponseDto.from(orderRepository.save(order));
     }
 
@@ -103,6 +116,16 @@ public class OrderService {
         Order order = orderRepository.findByOrderNumber(orderNumber)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order " + orderNumber + " not found"));
         order.setPaymentStatus(PaymentStatus.PAID);
+        return OrderResponseDto.from(orderRepository.save(order));
+    }
+
+    /** Staff has cross-checked the GCash reference against their own app — verify payment and send it to the kitchen. */
+    @Transactional
+    public OrderResponseDto verifyAndAcceptPayment(String orderNumber) {
+        Order order = orderRepository.findByOrderNumber(orderNumber)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order " + orderNumber + " not found"));
+        order.setPaymentStatus(PaymentStatus.PAID);
+        order.setStatus(OrderStatus.PREPARING);
         return OrderResponseDto.from(orderRepository.save(order));
     }
 

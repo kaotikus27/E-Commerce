@@ -31,6 +31,7 @@
   /* Status colors (not part of the 3-color brand palette, but harmonized with it) */
   --color-status-open: #6E9B72;
   --color-status-closed: #B4675A;
+  --color-status-pending: #C08A2E;
 
   /* Structural tokens derived from the palette (replace old raw hex) */
   --color-border-subtle: #D9C89A;
@@ -56,7 +57,7 @@
 html, body {
   margin: 0;
   padding: 0;
-  height: 100%;
+  min-height: 100%;
   background: var(--color-canvas-oat);
   color: var(--color-text-chocolate);
   font-family: var(--font-body);

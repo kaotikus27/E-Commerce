@@ -27,4 +27,8 @@ public class StoreSettings {
 
     private int orderLeadTimeMinutes;
     private int stopOrderingBeforeCloseMinutes;
+
+    /** GCash account customers should send manual payments to. Blank until an admin sets it. */
+    private String gcashAccountName;
+    private String gcashNumber;
 }

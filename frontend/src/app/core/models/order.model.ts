@@ -1,6 +1,8 @@
 import { CartItem } from './cart.model';
 
 export type OrderStatus = 'RECEIVED' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELLED';
+export type PaymentMethod = 'CASH_ON_PICKUP' | 'GCASH_MANUAL';
+export type PaymentStatus = 'UNPAID' | 'PENDING_VERIFICATION' | 'PAID' | 'FAILED' | 'REFUNDED';
 
 /**
  * What the checkout page builds client-side from the cart, BEFORE it's translated into
@@ -12,7 +14,8 @@ export interface OrderRequest {
   guestPhone?: string;
   guestEmail?: string;
   pickupTime: string;
-  paymentMethod: 'CARD' | 'CASH_ON_PICKUP';
+  paymentMethod: PaymentMethod;
+  gcashReference?: string;
   items: CartItem[];
   subtotal: number;
   tax: number;
@@ -45,8 +48,8 @@ export interface Order {
   guestPhone?: string;
   guestEmail?: string;
   pickupTime: string;
-  paymentMethod: 'CARD' | 'CASH_ON_PICKUP';
-  paymentStatus: 'PAID' | 'UNPAID';
+  paymentMethod: PaymentMethod;
+  paymentStatus: PaymentStatus;
   items: OrderItemSummary[];
   subtotal: number;
   tax: number;
@@ -54,6 +57,7 @@ export interface Order {
   createdAt: string;
   cancelReason?: string;
   notes?: string;
+  gcashReference?: string;
 }
 
 /** Admin order listing uses the exact same shape the backend returns. */
