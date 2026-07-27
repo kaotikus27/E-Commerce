@@ -19,6 +19,14 @@ export const routes: Routes = [
         loadComponent: () => import('./features/admin/products/admin-products-page.component').then(m => m.AdminProductsPageComponent),
       },
       {
+        path: 'promotions',
+        loadComponent: () => import('./features/admin/promotions/admin-promotions-page.component').then(m => m.AdminPromotionsPageComponent),
+      },
+      {
+        path: 'faqs',
+        loadComponent: () => import('./features/admin/faqs/admin-faqs-page.component').then(m => m.AdminFaqsPageComponent),
+      },
+      {
         path: 'settings',
         loadComponent: () => import('./features/admin/settings/admin-store-settings.component').then(m => m.AdminStoreSettingsComponent),
       },

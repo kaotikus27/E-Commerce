@@ -40,7 +40,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/**").permitAll()
-                        .requestMatchers("/api/v1/products/**", "/api/v1/categories/**", "/api/v1/store/**").permitAll()
+                        .requestMatchers("/api/v1/products/**", "/api/v1/categories/**", "/api/v1/store/**", "/api/v1/promotions/**", "/api/v1/faqs/**").permitAll()
                         .requestMatchers("/api/v1/orders/**").permitAll() // guest checkout & order tracking
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/uploads/**").permitAll() // product images must be publicly viewable

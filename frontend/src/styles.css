@@ -2,40 +2,47 @@
    Global design tokens — "Home by Bami" Chibi Herono palette
    ========================================================================== */
 :root {
-  /* Brand palette — warm cream + terracotta storefront palette */
-  --color-canvas-oat: #F8F2DA;
-  --color-text-chocolate: #2C1D11;
-  --color-hero-sage: #7B9E87;
-  --color-subdued-pistachio: #E8EFE8;
-  --color-terracotta: #AC481F;
-  --color-terracotta-dark: #8A3A18;
+  /* Brand palette — "Spirited Away" 3-color storefront palette:
+     parchment cream, bathhouse vermillion, soot ink. Every other
+     token below is a tint/shade derived from these three so the
+     whole site stays a true 3-color system. */
+  --color-canvas-oat: #F0E4C8;
+  --color-text-chocolate: #1E2A24;
+  --color-terracotta: #A63A2E;
+  --color-terracotta-dark: #7F2C22;
+
+  /* Secondary-accent aliases — muted/darker vermillion, not a 4th hue */
+  --color-hero-sage: #8C4A3E;
+  --color-sage-dark: #6E362C;
+  --color-sage-700: #5A2E26;
+
+  /* Light surface aliases — deeper parchment tan, not a tinted green */
+  --color-subdued-pistachio: #E4D4AC;
 
   /* Aliases so existing var(--color-*) references repaint automatically */
   --color-cream: var(--color-canvas-oat);
   --color-white: #FFFFFF;
   --color-sage: var(--color-hero-sage);
-  --color-sage-dark: #698D76;
-  --color-sage-700: #567164;
   --color-pistachio: var(--color-subdued-pistachio);
   --color-espresso: var(--color-text-chocolate);
   --color-charcoal: var(--color-text-chocolate);
   --color-error: #B3261E;
 
-  /* Status colors (not part of the 4-color brand palette, but harmonized with it) */
+  /* Status colors (not part of the 3-color brand palette, but harmonized with it) */
   --color-status-open: #6E9B72;
   --color-status-closed: #B4675A;
 
   /* Structural tokens derived from the palette (replace old raw hex) */
-  --color-border-subtle: #DCD3C4;
-  --color-text-muted: #7A6A5C;
-  --color-backdrop: rgba(44, 29, 17, 0.5);
+  --color-border-subtle: #D9C89A;
+  --color-text-muted: #5C6A62;
+  --color-backdrop: rgba(30, 42, 36, 0.5);
 
   --radius-sm: 10px;
   --radius-md: 1rem;
   --radius-lg: 1.5rem;
   --radius-pill: 9999px;
-  --shadow-card: 0 2px 10px rgba(44, 29, 17, 0.08);
-  --shadow-elevated: 0 8px 30px rgba(44, 29, 17, 0.18);
+  --shadow-card: 0 2px 10px rgba(30, 42, 36, 0.08);
+  --shadow-elevated: 0 8px 30px rgba(30, 42, 36, 0.18);
   --touch-target: 48px;
   --max-content: 1180px;
 
@@ -124,7 +131,7 @@ img { max-width: 100%; display: block; }
   letter-spacing: 0.02em;
 }
 .badge-sale { background: var(--color-text-chocolate); color: var(--color-canvas-oat); }
-.badge-favorite { background: var(--color-sage-dark); color: var(--color-white); }
+.badge-favorite { background: var(--color-canvas-oat); color: var(--color-terracotta); border: 1.5px solid var(--color-terracotta); }
 .badge-bestseller { background: var(--color-terracotta); color: var(--color-white); }
 
 /* Inputs */

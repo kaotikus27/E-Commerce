@@ -1,21 +1,22 @@
-import { Component } from '@angular/core';
-import { InfoPageComponent } from './info-page.component';
+import { Component, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FaqService } from '../../core/services/faq.service';
+import { FaqAccordionComponent } from '../../shared/components/faq-accordion/faq-accordion.component';
 
 @Component({
   selector: 'app-faq-page',
   standalone: true,
-  imports: [InfoPageComponent],
-  template: `<app-info-page title="Frequently Asked Questions" [html]="html"></app-info-page>`,
+  imports: [CommonModule, FaqAccordionComponent],
+  template: `
+    <section class="container faq-page">
+      <h1>Frequently Asked Questions</h1>
+      <app-faq-accordion [faqs]="faqService.faqs()"></app-faq-accordion>
+    </section>
+  `,
+  styles: [`
+    .faq-page { padding: 24px 16px 48px; max-width: 720px; }
+  `],
 })
 export class FaqPageComponent {
-  html = `
-    <h3>How far ahead can I order?</h3>
-    <p>Order any time during business hours for pickup as soon as 15 minutes later.</p>
-    <h3>Do you offer delivery?</h3>
-    <p>Not yet — we're pickup-only for now to keep everything as fresh as possible.</p>
-    <h3>Can I customize my drink?</h3>
-    <p>Yes! Milk type, sugar level, and temperature can all be adjusted when adding an item to your cart.</p>
-    <h3>What if an item is unavailable?</h3>
-    <p>We'll call the phone number on your order to arrange a substitution or refund.</p>
-  `;
+  faqService = inject(FaqService);
 }
