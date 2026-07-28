@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -6,8 +6,9 @@ import { CartService } from '../../../core/services/cart.service';
 import { CheckoutService } from '../../../core/services/checkout.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { StoreService } from '../../../core/services/store.service';
+import { DeliveryService } from '../../../core/services/delivery.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { OrderRequest, PaymentMethod } from '../../../core/models/order.model';
+import { FulfillmentType, OrderRequest, PaymentMethod } from '../../../core/models/order.model';
 import { toAbsoluteImageUrl } from '../../../core/utils/image-url.util';
 
 @Component({
@@ -44,9 +45,52 @@ import { toAbsoluteImageUrl } from '../../../core/utils/image-url.util';
             }
           </div>
 
-          <!-- Step 2: Payment -->
+          <!-- Step 2: Fulfillment -->
           <div class="card step">
-            <h3>2. Payment Method</h3>
+            <h3>2. Fulfillment</h3>
+            <div class="payment-options">
+              <label class="radio-row">
+                <input type="radio" name="fulfillment" value="PICKUP" [(ngModel)]="fulfillmentType" (ngModelChange)="onFulfillmentTypeChange()" />
+                Pickup
+              </label>
+              <label class="radio-row">
+                <input type="radio" name="fulfillment" value="DELIVERY" [(ngModel)]="fulfillmentType" (ngModelChange)="onFulfillmentTypeChange()" />
+                Delivery
+              </label>
+              @if (fulfillmentType === 'DELIVERY') {
+                <div class="delivery-box">
+                  <div class="field">
+                    <label for="delivery-address">Delivery Address</label>
+                    <textarea id="delivery-address" [(ngModel)]="deliveryAddress" name="deliveryAddress" rows="2"
+                      placeholder="e.g. 123 Sample St, Brgy. Example, City" (ngModelChange)="onAddressChanged()"></textarea>
+                  </div>
+                  <button type="button" class="btn btn-secondary btn-sm" [disabled]="delivery.loading() || !deliveryAddress.trim()" (click)="getDeliveryQuote()">
+                    {{ delivery.loading() ? 'Getting Quote…' : 'Get Delivery Quote' }}
+                  </button>
+
+                  @if (delivery.error()) {
+                    <p class="field-error delivery-error">{{ delivery.error() }}</p>
+                  }
+
+                  @if (delivery.quote(); as quote) {
+                    @if (!delivery.isExpired()) {
+                      <div class="quote-box">
+                        <p class="quote-address">Delivering to: <strong>{{ quote.resolvedAddress }}</strong></p>
+                        <p class="quote-fee">Delivery Fee: <strong>₱{{ quote.feeTotal.toFixed(2) }}</strong></p>
+                        <p class="quote-countdown">Quote expires in {{ formattedCountdown() }}</p>
+                      </div>
+                    } @else {
+                      <p class="field-error">This quote has expired — please get a new one.</p>
+                    }
+                  }
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Step 3: Payment -->
+          <div class="card step">
+            <h3>3. Payment Method</h3>
             <div class="payment-options">
               <label class="radio-row">
                 <input type="radio" name="pay" value="CASH_ON_PICKUP" [(ngModel)]="paymentMethod" />
@@ -81,9 +125,9 @@ import { toAbsoluteImageUrl } from '../../../core/utils/image-url.util';
             </div>
           </div>
 
-          <!-- Step 3: Notes -->
+          <!-- Step 4: Notes -->
           <div class="card step">
-            <h3>3. Special Instructions</h3>
+            <h3>4. Special Instructions</h3>
             <div class="field">
               <label for="notes">Notes for the kitchen (optional)</label>
               <textarea id="notes" [(ngModel)]="notes" name="notes" maxlength="150" rows="2" placeholder="e.g. Extra hot, nut allergy"></textarea>
@@ -91,11 +135,14 @@ import { toAbsoluteImageUrl } from '../../../core/utils/image-url.util';
             </div>
           </div>
 
-          <!-- Step 4: Review -->
+          <!-- Step 5: Review -->
           <div class="card step">
-            <h3>4. Order Review</h3>
+            <h3>5. Order Review</h3>
             @if (cart.pickupTime()) {
-              <p class="pickup-line"><strong>Pickup:</strong> {{ cart.pickupTime() }}</p>
+              <p class="pickup-line"><strong>{{ fulfillmentType === 'DELIVERY' ? 'Ready by' : 'Pickup' }}:</strong> {{ cart.pickupTime() }}</p>
+            }
+            @if (fulfillmentType === 'DELIVERY' && delivery.quote() && !delivery.isExpired()) {
+              <p class="pickup-line"><strong>Deliver to:</strong> {{ delivery.quote()!.resolvedAddress }}</p>
             }
             @for (item of cart.items(); track item.id) {
               <div class="review-row">
@@ -105,7 +152,10 @@ import { toAbsoluteImageUrl } from '../../../core/utils/image-url.util';
             }
             <div class="review-row"><span>Subtotal</span><span>₱{{ cart.subtotal().toFixed(2) }}</span></div>
             <div class="review-row"><span>Tax</span><span>₱{{ cart.tax().toFixed(2) }}</span></div>
-            <div class="review-row total"><span>Total</span><span>₱{{ cart.total().toFixed(2) }}</span></div>
+            @if (fulfillmentType === 'DELIVERY') {
+              <div class="review-row"><span>Delivery Fee</span><span>₱{{ (delivery.quote()?.feeTotal ?? 0).toFixed(2) }}</span></div>
+            }
+            <div class="review-row total"><span>Total (est.)</span><span>₱{{ estimatedTotal().toFixed(2) }}</span></div>
           </div>
 
           @if (errorMessage()) {
@@ -130,6 +180,11 @@ import { toAbsoluteImageUrl } from '../../../core/utils/image-url.util';
     .gcash-box { background: var(--color-subdued-pistachio); border-radius: var(--radius-sm); padding: 12px; margin: 4px 0 8px; }
     .gcash-instructions { font-size: 13px; line-height: 1.5; margin: 0 0 10px; }
     .gcash-qr { display: block; width: 220px; height: 220px; max-width: 100%; object-fit: contain; margin: 0 auto 12px; border-radius: var(--radius-sm); background: #fff; padding: 8px; }
+    .delivery-box { background: var(--color-subdued-pistachio); border-radius: var(--radius-sm); padding: 12px; margin: 4px 0 8px; }
+    .delivery-error { margin-top: 8px; }
+    .quote-box { margin-top: 10px; font-size: 13px; line-height: 1.6; }
+    .quote-fee { font-weight: 700; }
+    .quote-countdown { color: var(--color-text-muted); font-size: 12px; }
     .char-count { font-size: 12px; color: var(--color-text-muted); align-self: flex-end; }
     .file-chosen { font-size: 12px; color: var(--color-text-muted); }
     .pickup-line { font-size: 14px; margin-bottom: 8px; }
@@ -139,11 +194,12 @@ import { toAbsoluteImageUrl } from '../../../core/utils/image-url.util';
     .field-error { color: var(--color-error); font-size: 12px; font-weight: 600; }
   `],
 })
-export class CheckoutPageComponent {
+export class CheckoutPageComponent implements OnInit, OnDestroy {
   cart = inject(CartService);
   checkout = inject(CheckoutService);
   auth = inject(AuthService);
   store = inject(StoreService);
+  delivery = inject(DeliveryService);
   notifications = inject(NotificationService);
   router = inject(Router);
 
@@ -163,6 +219,49 @@ export class CheckoutPageComponent {
   phoneError = signal('');
   emailError = signal('');
   receiptFileError = signal('');
+
+  fulfillmentType: FulfillmentType = 'PICKUP';
+  deliveryAddress = '';
+  private nowTick = signal(Date.now());
+  private countdownTimer?: ReturnType<typeof setInterval>;
+
+  readonly remainingSeconds = computed(() => {
+    const quote = this.delivery.quote();
+    if (!quote) return 0;
+    return Math.max(0, Math.floor((new Date(quote.expiresAt).getTime() - this.nowTick()) / 1000));
+  });
+
+  readonly formattedCountdown = computed(() => {
+    const total = this.remainingSeconds();
+    const minutes = Math.floor(total / 60);
+    const seconds = total % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  });
+
+  readonly estimatedTotal = computed(() => {
+    const deliveryFee = this.fulfillmentType === 'DELIVERY' ? (this.delivery.quote()?.feeTotal ?? 0) : 0;
+    return this.cart.total() + deliveryFee;
+  });
+
+  ngOnInit() {
+    this.countdownTimer = setInterval(() => this.nowTick.set(Date.now()), 1000);
+  }
+
+  ngOnDestroy() {
+    if (this.countdownTimer) clearInterval(this.countdownTimer);
+  }
+
+  onFulfillmentTypeChange() {
+    this.delivery.clear();
+  }
+
+  onAddressChanged() {
+    this.delivery.clear();
+  }
+
+  getDeliveryQuote() {
+    this.delivery.getQuote(this.deliveryAddress.trim()).subscribe();
+  }
 
   onReceiptFileSelected(event: Event) {
     const file = (event.target as HTMLInputElement).files?.[0] ?? null;
@@ -210,6 +309,10 @@ export class CheckoutPageComponent {
       this.errorMessage.set('Please fix the highlighted fields above.');
       return;
     }
+    if (this.fulfillmentType === 'DELIVERY' && (!this.delivery.quote() || this.delivery.isExpired())) {
+      this.errorMessage.set('Please get a valid delivery quote before placing your order.');
+      return;
+    }
     if (!this.cart.pickupTime()) {
       this.errorMessage.set("Please select a pickup time — we're closed right now, or no slot was chosen.");
       return;
@@ -224,6 +327,8 @@ export class CheckoutPageComponent {
       pickupTime: this.cart.pickupTime(),
       paymentMethod: this.paymentMethod,
       receiptFile: this.paymentMethod === 'GCASH_MANUAL' ? this.receiptFile() ?? undefined : undefined,
+      fulfillmentType: this.fulfillmentType,
+      deliveryQuotationId: this.fulfillmentType === 'DELIVERY' ? this.delivery.quote()?.quotationId : undefined,
       items: this.cart.items(),
       subtotal: this.cart.subtotal(),
       tax: this.cart.tax(),
@@ -234,6 +339,7 @@ export class CheckoutPageComponent {
     this.checkout.placeOrder(request).subscribe({
       next: order => {
         this.cart.clear();
+        this.delivery.clear();
         this.notifications.success('Order placed!');
         this.router.navigate(['/order-confirmation', order.id]);
         this.submitting.set(false);

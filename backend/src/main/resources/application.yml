@@ -1,5 +1,7 @@
 server:
   port: 8080
+  error:
+    include-message: always
 
 spring:
   datasource:
@@ -31,3 +33,16 @@ app:
     expiration-ms: 86400000
   ocr:
     tessdata-path: "C:/Users/Public.DESKTOP-3A1LBHM/AppData/Local/Programs/Tesseract-OCR/tessdata"
+
+lalamove:
+  base-url: "https://rest.sandbox.lalamove.com/v3"
+  market: PH
+  # Read from the LALAMOVE_API_KEY / LALAMOVE_API_SECRET environment variables — never put the
+  # real values directly in this file, it's tracked in a public git repo.
+  api-key: "${LALAMOVE_API_KEY:}"
+  api-secret: "${LALAMOVE_API_SECRET:}"
+  default-service-type: "MOTORCYCLE"
+
+google:
+  # Read from GOOGLE_MAPS_API_KEY — same reasoning as above.
+  maps-api-key: "${GOOGLE_MAPS_API_KEY:}"

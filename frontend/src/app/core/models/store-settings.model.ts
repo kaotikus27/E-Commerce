@@ -16,6 +16,8 @@ export interface StoreSettings {
   gcashAccountName: string | null;
   gcashNumber: string | null;
   gcashQrImagePath: string | null;
+  /** The store's pinpoint address — saving a new value re-geocodes it server-side automatically. */
+  storeAddress: string | null;
 }
 
 export interface StoreClosure {

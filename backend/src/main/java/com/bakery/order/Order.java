@@ -57,6 +57,18 @@ public class Order {
     /** Raw reference number Tess4J read off the receipt image, kept separate from gcashReference for admin cross-check. */
     private String ocrExtractedRef;
 
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private FulfillmentType fulfillmentType = FulfillmentType.PICKUP;
+
+    private String deliveryAddress;
+    private BigDecimal deliveryLatitude;
+    private BigDecimal deliveryLongitude;
+
+    /** Lalamove's quotation id, stored as String — PH order/quotation ids are up to 19 digits. */
+    private String lalamoveQuotationId;
+    private BigDecimal deliveryFee;
+
     @Builder.Default
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<OrderItem> items = new ArrayList<>();

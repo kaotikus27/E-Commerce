@@ -76,7 +76,12 @@ const ORIGINAL_TITLE = 'Home by Bami — Admin';
         <span class="total">₱{{ order.total.toFixed(2) }}</span>
       </div>
       <div class="customer">{{ order.guestName || 'Guest' }} · {{ order.guestPhone }}</div>
-      <div class="pickup">Pickup: {{ order.pickupTime }}</div>
+      <div class="pickup">{{ order.fulfillmentType === 'DELIVERY' ? 'Ready by' : 'Pickup' }}: {{ order.pickupTime }}</div>
+      @if (order.fulfillmentType === 'DELIVERY') {
+        <div class="delivery-info">
+          🛵 Deliver to: <strong>{{ order.deliveryAddress }}</strong> — Fee: ₱{{ (order.deliveryFee ?? 0).toFixed(2) }}
+        </div>
+      }
       <div class="payment-row">
         <span class="payment">{{ order.paymentMethod === 'GCASH_MANUAL' ? 'GCash' : 'Cash on Pickup' }}</span>
         <span class="pay-status" [class.paid]="order.paymentStatus === 'PAID'" [class.pending]="order.paymentStatus === 'PENDING_VERIFICATION'">{{ order.paymentStatus }}</span>
@@ -144,6 +149,7 @@ const ORIGINAL_TITLE = 'Home by Bami — Admin';
     .total { color: var(--color-text-chocolate); }
     .customer { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
     .pickup { font-size: 12px; color: var(--color-sage-700); margin-bottom: 6px; }
+    .delivery-info { font-size: 12px; color: var(--color-text-muted); margin-bottom: 8px; }
     .payment-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
     .payment { font-size: 12px; color: var(--color-text-muted); }
     .pay-status { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: var(--radius-pill); background: var(--color-subdued-pistachio); color: var(--color-status-closed); }

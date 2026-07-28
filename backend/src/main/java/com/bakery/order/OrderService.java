@@ -2,6 +2,8 @@ package com.bakery.order;
 
 import com.bakery.catalog.Product;
 import com.bakery.catalog.ProductRepository;
+import com.bakery.delivery.DeliveryQuote;
+import com.bakery.delivery.DeliveryQuoteService;
 import com.bakery.store.StoreSettingsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -37,6 +39,7 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final StoreSettingsService storeSettingsService;
     private final GCashOcrService gcashOcrService;
+    private final DeliveryQuoteService deliveryQuoteService;
 
     @Transactional
     public OrderResponseDto placeOrder(OrderRequestDto request, MultipartFile receiptImage) {
@@ -49,6 +52,8 @@ public class OrderService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "GCash payment receipt image is required.");
         }
 
+        FulfillmentType fulfillmentType = request.fulfillmentType() != null ? request.fulfillmentType() : FulfillmentType.PICKUP;
+
         Order order = Order.builder()
                 .orderNumber(generateOrderNumber())
                 .guestName(request.guestName())
@@ -60,10 +65,22 @@ public class OrderService {
                 .status(OrderStatus.RECEIVED)
                 .createdAt(Instant.now())
                 .notes(request.notes())
+                .fulfillmentType(fulfillmentType)
                 .build();
 
         if (isGcash) {
             applyReceiptImage(order, receiptImage);
+        }
+
+        BigDecimal deliveryFee = BigDecimal.ZERO;
+        if (fulfillmentType == FulfillmentType.DELIVERY) {
+            DeliveryQuote quote = deliveryQuoteService.validateAndConsume(request.deliveryQuotationId());
+            order.setDeliveryAddress(quote.getDestinationAddress());
+            order.setDeliveryLatitude(quote.getLatitude());
+            order.setDeliveryLongitude(quote.getLongitude());
+            order.setLalamoveQuotationId(quote.getQuotationId());
+            deliveryFee = quote.getFeeTotal();
+            order.setDeliveryFee(deliveryFee);
         }
 
         BigDecimal subtotal = BigDecimal.ZERO;
@@ -91,7 +108,7 @@ public class OrderService {
         }
 
         BigDecimal tax = subtotal.multiply(TAX_RATE).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal total = subtotal.add(tax).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal total = subtotal.add(tax).add(deliveryFee).setScale(2, RoundingMode.HALF_UP);
 
         order.setSubtotal(subtotal);
         order.setTax(tax);

@@ -34,6 +34,8 @@ export class CheckoutService {
       paymentMethod: request.paymentMethod,
       items,
       notes: request.notes,
+      fulfillmentType: request.fulfillmentType,
+      deliveryQuotationId: request.deliveryQuotationId,
     };
 
     // The backend endpoint always expects multipart/form-data (so the same endpoint can

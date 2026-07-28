@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.util.List;
@@ -35,6 +36,11 @@ public class StoreSettingsSeeder implements CommandLineRunner {
                 .schedule(new java.util.ArrayList<>(schedule))
                 .orderLeadTimeMinutes(15)
                 .stopOrderingBeforeCloseMinutes(0)
+                // Geocoded via Google's Geocoding API against the real address — an admin can
+                // update this later from Store Settings, which re-geocodes automatically.
+                .storeAddress("048 Kay Piskal Rd, Tigbe, Norzagaray, 3013 Bulacan, Philippines")
+                .storeLatitude(new BigDecimal("14.8690823"))
+                .storeLongitude(new BigDecimal("121.0430113"))
                 .build();
 
         storeSettingsRepository.save(settings);
@@ -43,7 +49,7 @@ public class StoreSettingsSeeder implements CommandLineRunner {
     private DaySchedule openDay(DayOfWeek day) {
         return DaySchedule.builder()
                 .dayOfWeek(day)
-                .openTime(LocalTime.of(17, 0))
+                .openTime(LocalTime.of(10, 0))
                 .closeTime(null) // open through midnight
                 .closedAllDay(false)
                 .build();

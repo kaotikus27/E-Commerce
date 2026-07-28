@@ -3,6 +3,7 @@ package com.bakery.store;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,4 +35,10 @@ public class StoreSettings {
 
     /** Path to the admin-uploaded GCash QR code image, shown at checkout. Blank until set. */
     private String gcashQrImagePath;
+
+    /** The store's physical pinpoint — shown publicly and used as the Lalamove delivery quote
+     *  origin. Re-geocoded automatically whenever an admin changes storeAddress. */
+    private String storeAddress;
+    private BigDecimal storeLatitude;
+    private BigDecimal storeLongitude;
 }

@@ -13,7 +13,8 @@ public record StoreSettingsDto(
         @Min(0) int stopOrderingBeforeCloseMinutes,
         String gcashAccountName,
         String gcashNumber,
-        String gcashQrImagePath
+        String gcashQrImagePath,
+        String storeAddress
 ) {
     public static StoreSettingsDto from(StoreSettings s) {
         return new StoreSettingsDto(
@@ -23,7 +24,8 @@ public record StoreSettingsDto(
                 s.getStopOrderingBeforeCloseMinutes(),
                 s.getGcashAccountName(),
                 s.getGcashNumber(),
-                s.getGcashQrImagePath()
+                s.getGcashQrImagePath(),
+                s.getStoreAddress()
         );
     }
 }

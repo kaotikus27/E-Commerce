@@ -1,5 +1,7 @@
 package com.bakery.store;
 
+import com.bakery.delivery.GeocodeResult;
+import com.bakery.delivery.GeocodingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -11,6 +13,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -19,6 +22,7 @@ public class StoreSettingsService {
 
     private final StoreSettingsRepository storeSettingsRepository;
     private final StoreClosureRepository storeClosureRepository;
+    private final GeocodingService geocodingService;
 
     public StoreSettings getSettingsEntity() {
         return storeSettingsRepository.findById(1L)
@@ -40,6 +44,17 @@ public class StoreSettingsService {
         settings.setGcashAccountName(request.gcashAccountName());
         settings.setGcashNumber(request.gcashNumber());
         settings.setGcashQrImagePath(request.gcashQrImagePath());
+
+        // Only re-geocode when the address text actually changed — avoids burning a Geocoding
+        // API call on every unrelated save (toggling pause, editing GCash info, etc.).
+        String newAddress = request.storeAddress();
+        if (newAddress != null && !newAddress.isBlank() && !Objects.equals(newAddress.trim(), settings.getStoreAddress())) {
+            GeocodeResult geocoded = geocodingService.geocode(newAddress.trim());
+            settings.setStoreAddress(geocoded.formattedAddress());
+            settings.setStoreLatitude(geocoded.latitude());
+            settings.setStoreLongitude(geocoded.longitude());
+        }
+
         return StoreSettingsDto.from(storeSettingsRepository.save(settings));
     }
 

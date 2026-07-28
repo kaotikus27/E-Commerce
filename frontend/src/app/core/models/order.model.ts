@@ -3,6 +3,7 @@ import { CartItem } from './cart.model';
 export type OrderStatus = 'RECEIVED' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELLED';
 export type PaymentMethod = 'CASH_ON_PICKUP' | 'GCASH_MANUAL';
 export type PaymentStatus = 'UNPAID' | 'PENDING_VERIFICATION' | 'PAID' | 'FAILED' | 'REFUNDED';
+export type FulfillmentType = 'PICKUP' | 'DELIVERY';
 
 /**
  * What the checkout page builds client-side from the cart, BEFORE it's translated into
@@ -18,6 +19,9 @@ export interface OrderRequest {
   /** GCash receipt screenshot — required by the backend when paymentMethod is GCASH_MANUAL.
    *  The reference number is no longer typed by the customer — it's read via OCR off this image. */
   receiptFile?: File;
+  fulfillmentType: FulfillmentType;
+  /** Required when fulfillmentType is DELIVERY — identifies the server-side quote to consume. */
+  deliveryQuotationId?: string;
   items: CartItem[];
   subtotal: number;
   tax: number;
@@ -62,6 +66,9 @@ export interface Order {
   gcashReference?: string;
   receiptImagePath?: string;
   ocrExtractedRef?: string;
+  fulfillmentType: FulfillmentType;
+  deliveryAddress?: string;
+  deliveryFee?: number;
 }
 
 /** Admin order listing uses the exact same shape the backend returns. */

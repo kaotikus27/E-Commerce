@@ -78,6 +78,15 @@ interface DayForm {
     </div>
 
     <div class="card section">
+      <h3>Store Pinpoint</h3>
+      <p class="hint">Shown to customers publicly, and used as the delivery-quote origin point. Saving a changed address automatically looks up its coordinates — no need to enter these manually.</p>
+      <div class="field">
+        <label for="store-address">Store Address</label>
+        <textarea id="store-address" [(ngModel)]="storeAddress" name="storeAddress" rows="2" placeholder="e.g. 123 Sample St, Brgy. Example, City"></textarea>
+      </div>
+    </div>
+
+    <div class="card section">
       <h3>GCash Payment Details</h3>
       <p class="hint">Shown to customers at checkout when they choose GCash, so they know who to send payment to.</p>
       <div class="field">
@@ -147,6 +156,7 @@ export class AdminStoreSettingsComponent implements OnInit {
   gcashAccountName = '';
   gcashNumber = '';
   gcashQrImagePath = '';
+  storeAddress = '';
   qrPreviewUrl = '';
   private selectedQrFile: File | null = null;
   saving = false;
@@ -170,6 +180,7 @@ export class AdminStoreSettingsComponent implements OnInit {
         this.gcashNumber = s.gcashNumber ?? '';
         this.gcashQrImagePath = s.gcashQrImagePath ?? '';
         this.qrPreviewUrl = s.gcashQrImagePath ? toAbsoluteImageUrl(s.gcashQrImagePath) : '';
+        this.storeAddress = s.storeAddress ?? '';
       }
     });
   }
@@ -242,6 +253,7 @@ export class AdminStoreSettingsComponent implements OnInit {
       gcashAccountName: this.gcashAccountName.trim(),
       gcashNumber: this.gcashNumber.trim(),
       gcashQrImagePath: this.gcashQrImagePath || null,
+      storeAddress: this.storeAddress.trim() || null,
     }).subscribe(res => {
       this.saving = false;
       if (res) this.notifications.success('Store schedule saved.');
