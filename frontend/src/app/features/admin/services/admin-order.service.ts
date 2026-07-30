@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { catchError, of, tap } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
@@ -106,6 +107,19 @@ export class AdminOrderService {
       }),
       catchError(() => {
         this.notifications.error('Could not upload the receipt image.');
+        return of(null);
+      })
+    );
+  }
+
+  /** Admin clicks "Call Lalamove Rider" — places a real Lalamove order (Phase 2). */
+  dispatchDelivery(orderNumber: string) {
+    return this.api.patch<AdminOrder>(`/admin/orders/${orderNumber}/dispatch`, {}).pipe(
+      tap(updated => {
+        this.orders.update(list => list.map(o => (o.id === updated.id ? updated : o)));
+      }),
+      catchError((err: HttpErrorResponse) => {
+        this.notifications.error(err.error?.message || 'Could not dispatch the delivery.');
         return of(null);
       })
     );

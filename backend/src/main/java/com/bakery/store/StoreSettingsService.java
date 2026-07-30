@@ -15,10 +15,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 public class StoreSettingsService {
+
+    /** Required format for Lalamove's sender.phone field on dispatch. */
+    private static final Pattern E164_PATTERN = Pattern.compile("^\\+[1-9]\\d{1,14}$");
 
     private final StoreSettingsRepository storeSettingsRepository;
     private final StoreClosureRepository storeClosureRepository;
@@ -46,14 +50,22 @@ public class StoreSettingsService {
         settings.setGcashQrImagePath(request.gcashQrImagePath());
 
         // Only re-geocode when the address text actually changed — avoids burning a Geocoding
-        // API call on every unrelated save (toggling pause, editing GCash info, etc.).
+        // API call on every unrelated save (toggling pause, editing GCash info, etc.). Accepts
+        // either a plain typed address or a pasted Google Maps URL.
         String newAddress = request.storeAddress();
         if (newAddress != null && !newAddress.isBlank() && !Objects.equals(newAddress.trim(), settings.getStoreAddress())) {
-            GeocodeResult geocoded = geocodingService.geocode(newAddress.trim());
+            GeocodeResult geocoded = geocodingService.resolveAddressOrMapsUrl(newAddress.trim());
             settings.setStoreAddress(geocoded.formattedAddress());
             settings.setStoreLatitude(geocoded.latitude());
             settings.setStoreLongitude(geocoded.longitude());
         }
+
+        String phone = request.storePhone();
+        if (phone != null && !phone.isBlank() && !E164_PATTERN.matcher(phone.trim()).matches()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Store phone must be in international format, e.g. +639171234567.");
+        }
+        settings.setStorePhone(phone != null ? phone.trim() : null);
 
         return StoreSettingsDto.from(storeSettingsRepository.save(settings));
     }

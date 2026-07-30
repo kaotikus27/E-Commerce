@@ -14,7 +14,8 @@ public record StoreSettingsDto(
         String gcashAccountName,
         String gcashNumber,
         String gcashQrImagePath,
-        String storeAddress
+        String storeAddress,
+        String storePhone
 ) {
     public static StoreSettingsDto from(StoreSettings s) {
         return new StoreSettingsDto(
@@ -25,7 +26,8 @@ public record StoreSettingsDto(
                 s.getGcashAccountName(),
                 s.getGcashNumber(),
                 s.getGcashQrImagePath(),
-                s.getStoreAddress()
+                s.getStoreAddress(),
+                s.getStorePhone()
         );
     }
 }

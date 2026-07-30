@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 @Service
@@ -32,7 +33,7 @@ public class DeliveryQuoteService {
 
     @Transactional
     public DeliveryQuoteResponseDto requestQuote(String address, String serviceType) {
-        GeocodeResult destination = geocodingService.geocode(address);
+        GeocodeResult destination = geocodingService.resolveAddressOrMapsUrl(address);
         String resolvedServiceType = (serviceType == null || serviceType.isBlank()) ? defaultServiceType : serviceType;
 
         LalamoveQuotation quotation = lalamoveClient.getQuotation(
@@ -52,7 +53,21 @@ public class DeliveryQuoteService {
                 .expiresAt(quotation.expiresAt())
                 .build();
 
-        return DeliveryQuoteResponseDto.from(deliveryQuoteRepository.save(quote));
+        String googleMapsRouteUrl = buildGoogleMapsRouteUrl(
+                storeService.getLatitude(), storeService.getLongitude(),
+                destination.latitude(), destination.longitude()
+        );
+
+        return DeliveryQuoteResponseDto.from(deliveryQuoteRepository.save(quote), googleMapsRouteUrl);
+    }
+
+    /** Plain, keyless Google Maps directions deep link — driving mode approximates a motorcycle
+     *  rider's real road route far better than bicycling mode, which avoids roads bikes can't use. */
+    private String buildGoogleMapsRouteUrl(BigDecimal originLat, BigDecimal originLng,
+                                            BigDecimal destLat, BigDecimal destLng) {
+        return "https://www.google.com/maps/dir/?api=1&origin=" + originLat.toPlainString() + "," + originLng.toPlainString()
+                + "&destination=" + destLat.toPlainString() + "," + destLng.toPlainString()
+                + "&travelmode=driving";
     }
 
     /** Looks up a quote by id and marks it consumed — a quote is single-use, matching Lalamove's

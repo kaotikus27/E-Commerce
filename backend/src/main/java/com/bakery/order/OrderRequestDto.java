@@ -17,6 +17,9 @@ public record OrderRequestDto(
         @Size(max = 150) String notes,
         FulfillmentType fulfillmentType,
         /** Required when fulfillmentType is DELIVERY — identifies the server-side DeliveryQuote to consume. */
-        String deliveryQuotationId
+        String deliveryQuotationId,
+        /** Block/Lot/Phase/Gate/landmark rider instructions — plain text, never geocoded, so no
+         *  quote/integrity handling needed (unlike deliveryAddress/fee, which come from the quote). */
+        String deliveryUnitDetails
 ) {
 }

@@ -18,6 +18,8 @@ export interface StoreSettings {
   gcashQrImagePath: string | null;
   /** The store's pinpoint address — saving a new value re-geocodes it server-side automatically. */
   storeAddress: string | null;
+  /** E.164 format (e.g. "+639171234567") — required for Lalamove dispatch. */
+  storePhone: string | null;
 }
 
 export interface StoreClosure {

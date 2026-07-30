@@ -10,12 +10,15 @@ public record DeliveryQuoteResponseDto(
         BigDecimal longitude,
         BigDecimal feeTotal,
         Instant expiresAt,
-        String serviceType
+        String serviceType,
+        /** Free, keyless Google Maps deep link so the customer can visually verify the pinned
+         *  location on their own device — no Static Maps API call, no key exposed to the browser. */
+        String googleMapsRouteUrl
 ) {
-    public static DeliveryQuoteResponseDto from(DeliveryQuote quote) {
+    public static DeliveryQuoteResponseDto from(DeliveryQuote quote, String googleMapsRouteUrl) {
         return new DeliveryQuoteResponseDto(
                 quote.getQuotationId(), quote.getDestinationAddress(), quote.getLatitude(), quote.getLongitude(),
-                quote.getFeeTotal(), quote.getExpiresAt(), quote.getServiceType()
+                quote.getFeeTotal(), quote.getExpiresAt(), quote.getServiceType(), googleMapsRouteUrl
         );
     }
 }

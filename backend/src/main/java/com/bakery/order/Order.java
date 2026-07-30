@@ -61,13 +61,33 @@ public class Order {
     @Builder.Default
     private FulfillmentType fulfillmentType = FulfillmentType.PICKUP;
 
+    /** The geocoded pinpoint search text (subdivision/landmark/barangay/city) — kept separate
+     *  from deliveryUnitDetails so imprecise PH lot/block addressing doesn't have to fight the
+     *  geocoder; the fee only needs subdivision-level accuracy. */
     private String deliveryAddress;
     private BigDecimal deliveryLatitude;
     private BigDecimal deliveryLongitude;
 
+    /** Human-readable rider instructions (Block/Lot/Phase/Gate/landmark) — never geocoded, just
+     *  carried through for whoever physically delivers the order. */
+    private String deliveryUnitDetails;
+
     /** Lalamove's quotation id, stored as String — PH order/quotation ids are up to 19 digits. */
     private String lalamoveQuotationId;
     private BigDecimal deliveryFee;
+
+    /** Set once an admin dispatches a rider (Phase 2) — distinct from lalamoveQuotationId, which
+     *  is the Phase 1 checkout-time quote and never becomes a real Lalamove order on its own. */
+    private String lalamoveOrderId;
+
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private DeliveryStatus deliveryStatus = DeliveryStatus.NOT_DISPATCHED;
+
+    private String driverName;
+    private String driverPhone;
+    private String driverPlateNumber;
+    private String trackingShareLink;
 
     @Builder.Default
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)

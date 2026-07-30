@@ -41,4 +41,7 @@ public class StoreSettings {
     private String storeAddress;
     private BigDecimal storeLatitude;
     private BigDecimal storeLongitude;
+
+    /** E.164 format (e.g. "+639171234567") — required as the Lalamove dispatch sender phone. */
+    private String storePhone;
 }

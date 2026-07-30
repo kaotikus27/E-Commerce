@@ -7,4 +7,6 @@ export interface DeliveryQuote {
   feeTotal: number;
   expiresAt: string;
   serviceType: string;
+  /** Free, keyless Google Maps directions link so the customer can visually verify the pin. */
+  googleMapsRouteUrl: string;
 }

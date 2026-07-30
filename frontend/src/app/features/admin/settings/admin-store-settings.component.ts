@@ -79,10 +79,15 @@ interface DayForm {
 
     <div class="card section">
       <h3>Store Pinpoint</h3>
-      <p class="hint">Shown to customers publicly, and used as the delivery-quote origin point. Saving a changed address automatically looks up its coordinates — no need to enter these manually.</p>
+      <p class="hint">Shown to customers publicly, and used as the delivery-quote origin point. Type an address, or paste a Google Maps link (e.g. from "Share" on the place) for the most precise pin — either way, coordinates are looked up automatically on save.</p>
       <div class="field">
         <label for="store-address">Store Address</label>
         <textarea id="store-address" [(ngModel)]="storeAddress" name="storeAddress" rows="2" placeholder="e.g. 123 Sample St, Brgy. Example, City"></textarea>
+      </div>
+      <div class="field">
+        <label for="store-phone">Store Phone (for Lalamove dispatch)</label>
+        <input id="store-phone" [(ngModel)]="storePhone" name="storePhone" placeholder="+639171234567" />
+        <small class="field-hint">International format required — this is who Lalamove riders will call.</small>
       </div>
     </div>
 
@@ -131,6 +136,7 @@ interface DayForm {
     .pause-section { text-align: center; }
     .status-line { font-weight: 700; margin-bottom: 12px; }
     .hint { font-size: 13px; color: var(--color-text-muted); margin-bottom: 14px; }
+    .field-hint { display: block; font-size: 12px; color: var(--color-text-muted); margin-top: 4px; }
     .qr-preview { display: block; width: 140px; height: 140px; object-fit: contain; border: 1.5px solid var(--color-subdued-pistachio); border-radius: var(--radius-sm); margin-bottom: 8px; background: #fff; }
     .paused { color: var(--color-status-closed); }
     .accepting { color: var(--color-status-open); }
@@ -157,6 +163,7 @@ export class AdminStoreSettingsComponent implements OnInit {
   gcashNumber = '';
   gcashQrImagePath = '';
   storeAddress = '';
+  storePhone = '';
   qrPreviewUrl = '';
   private selectedQrFile: File | null = null;
   saving = false;
@@ -181,6 +188,7 @@ export class AdminStoreSettingsComponent implements OnInit {
         this.gcashQrImagePath = s.gcashQrImagePath ?? '';
         this.qrPreviewUrl = s.gcashQrImagePath ? toAbsoluteImageUrl(s.gcashQrImagePath) : '';
         this.storeAddress = s.storeAddress ?? '';
+        this.storePhone = s.storePhone ?? '';
       }
     });
   }
@@ -254,6 +262,7 @@ export class AdminStoreSettingsComponent implements OnInit {
       gcashNumber: this.gcashNumber.trim(),
       gcashQrImagePath: this.gcashQrImagePath || null,
       storeAddress: this.storeAddress.trim() || null,
+      storePhone: this.storePhone.trim() || null,
     }).subscribe(res => {
       this.saving = false;
       if (res) this.notifications.success('Store schedule saved.');

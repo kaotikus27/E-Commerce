@@ -35,13 +35,17 @@ app:
     tessdata-path: "C:/Users/Public.DESKTOP-3A1LBHM/AppData/Local/Programs/Tesseract-OCR/tessdata"
 
 lalamove:
-  base-url: "https://rest.sandbox.lalamove.com/v3"
+  # No /v3 suffix here — LalamoveClient's paths (e.g. "/v3/quotations") already include it, and
+  # the HMAC signature is computed over that exact path, so a doubled "/v3/v3/..." here would
+  # both hit the wrong URL and break signature verification (401).
+  base-url: "https://rest.sandbox.lalamove.com"
   market: PH
   # Read from the LALAMOVE_API_KEY / LALAMOVE_API_SECRET environment variables — never put the
   # real values directly in this file, it's tracked in a public git repo.
   api-key: "${LALAMOVE_API_KEY:}"
   api-secret: "${LALAMOVE_API_SECRET:}"
   default-service-type: "MOTORCYCLE"
+  language: "en_PH"
 
 google:
   # Read from GOOGLE_MAPS_API_KEY — same reasoning as above.

@@ -12,7 +12,6 @@ import java.nio.charset.StandardCharsets;
 public class StoreService {
 
     private static final String NAME = "Home by Bami";
-    private static final String PHONE = "";
 
     private final StoreSettingsService storeSettingsService;
 
@@ -23,6 +22,11 @@ public class StoreService {
     /** The store's pinpoint address — admin-editable via Store Settings, re-geocoded on change. */
     public String getAddress() {
         return storeSettingsService.getSettings().storeAddress();
+    }
+
+    /** E.164 phone — admin-editable via Store Settings, blank until set. Required for Lalamove dispatch. */
+    public String getPhone() {
+        return storeSettingsService.getSettings().storePhone();
     }
 
     public BigDecimal getLatitude() {
@@ -41,7 +45,7 @@ public class StoreService {
     public StoreInfoDto getStoreInfo() {
         StoreSettingsDto settings = storeSettingsService.getSettings();
         return new StoreInfoDto(
-                NAME, settings.storeAddress(), PHONE, getMapUrl(),
+                NAME, settings.storeAddress(), settings.storePhone(), getMapUrl(),
                 storeSettingsService.isAcceptingOrders(),
                 storeSettingsService.todayHoursLabel(),
                 settings.orderLeadTimeMinutes(),

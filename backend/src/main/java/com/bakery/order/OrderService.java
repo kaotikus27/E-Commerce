@@ -2,6 +2,7 @@ package com.bakery.order;
 
 import com.bakery.catalog.Product;
 import com.bakery.catalog.ProductRepository;
+import com.bakery.delivery.DeliveryDispatchService;
 import com.bakery.delivery.DeliveryQuote;
 import com.bakery.delivery.DeliveryQuoteService;
 import com.bakery.store.StoreSettingsService;
@@ -40,6 +41,7 @@ public class OrderService {
     private final StoreSettingsService storeSettingsService;
     private final GCashOcrService gcashOcrService;
     private final DeliveryQuoteService deliveryQuoteService;
+    private final DeliveryDispatchService deliveryDispatchService;
 
     @Transactional
     public OrderResponseDto placeOrder(OrderRequestDto request, MultipartFile receiptImage) {
@@ -81,6 +83,7 @@ public class OrderService {
             order.setLalamoveQuotationId(quote.getQuotationId());
             deliveryFee = quote.getFeeTotal();
             order.setDeliveryFee(deliveryFee);
+            order.setDeliveryUnitDetails(request.deliveryUnitDetails());
         }
 
         BigDecimal subtotal = BigDecimal.ZERO;
@@ -164,6 +167,33 @@ public class OrderService {
         order.setPaymentStatus(PaymentStatus.PAID);
         order.setStatus(OrderStatus.PREPARING);
         return OrderResponseDto.from(orderRepository.save(order));
+    }
+
+    /** Admin clicks "Call Lalamove Rider" — places a real Lalamove order (Phase 2) against an
+     *  already-paid delivery order. Fresh-quotes at dispatch time; see DeliveryDispatchService. */
+    @Transactional
+    public OrderResponseDto dispatchDelivery(String orderNumber) {
+        Order order = orderRepository.findByOrderNumber(orderNumber)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order " + orderNumber + " not found"));
+        deliveryDispatchService.dispatch(order);
+        return OrderResponseDto.from(orderRepository.save(order));
+    }
+
+    /** Applies a Lalamove webhook event to whichever order matches lalamoveOrderId — silently a
+     *  no-op if no match (unknown/stale/duplicate event), since a webhook receiver should never
+     *  500 back to the sender over something it can't do anything about. */
+    @Transactional
+    public void applyDeliveryWebhookUpdate(String lalamoveOrderId, DeliveryStatus newStatus,
+                                            String driverName, String driverPhone, String driverPlateNumber,
+                                            String shareLink) {
+        orderRepository.findByLalamoveOrderId(lalamoveOrderId).ifPresent(order -> {
+            if (newStatus != null) order.setDeliveryStatus(newStatus);
+            if (driverName != null) order.setDriverName(driverName);
+            if (driverPhone != null) order.setDriverPhone(driverPhone);
+            if (driverPlateNumber != null) order.setDriverPlateNumber(driverPlateNumber);
+            if (shareLink != null) order.setTrackingShareLink(shareLink);
+            orderRepository.save(order);
+        });
     }
 
     /** Admin manually attaches/replaces a receipt screenshot during verification — e.g. the

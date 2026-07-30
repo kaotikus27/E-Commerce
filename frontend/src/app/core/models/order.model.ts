@@ -4,6 +4,7 @@ export type OrderStatus = 'RECEIVED' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CA
 export type PaymentMethod = 'CASH_ON_PICKUP' | 'GCASH_MANUAL';
 export type PaymentStatus = 'UNPAID' | 'PENDING_VERIFICATION' | 'PAID' | 'FAILED' | 'REFUNDED';
 export type FulfillmentType = 'PICKUP' | 'DELIVERY';
+export type DeliveryStatus = 'NOT_DISPATCHED' | 'ASSIGNING_DRIVER' | 'ON_GOING' | 'PICKED_UP' | 'COMPLETED' | 'REJECTED' | 'CANCELED';
 
 /**
  * What the checkout page builds client-side from the cart, BEFORE it's translated into
@@ -22,6 +23,8 @@ export interface OrderRequest {
   fulfillmentType: FulfillmentType;
   /** Required when fulfillmentType is DELIVERY — identifies the server-side quote to consume. */
   deliveryQuotationId?: string;
+  /** Block/Lot/Phase/Gate/landmark rider instructions — plain text, never geocoded. */
+  deliveryUnitDetails?: string;
   items: CartItem[];
   subtotal: number;
   tax: number;
@@ -69,6 +72,12 @@ export interface Order {
   fulfillmentType: FulfillmentType;
   deliveryAddress?: string;
   deliveryFee?: number;
+  deliveryUnitDetails?: string;
+  deliveryStatus: DeliveryStatus;
+  driverName?: string;
+  driverPhone?: string;
+  driverPlateNumber?: string;
+  trackingShareLink?: string;
 }
 
 /** Admin order listing uses the exact same shape the backend returns. */

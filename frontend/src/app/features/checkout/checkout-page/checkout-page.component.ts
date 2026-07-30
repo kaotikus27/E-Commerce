@@ -60,9 +60,19 @@ import { toAbsoluteImageUrl } from '../../../core/utils/image-url.util';
               @if (fulfillmentType === 'DELIVERY') {
                 <div class="delivery-box">
                   <div class="field">
-                    <label for="delivery-address">Delivery Address</label>
+                    <label for="delivery-address">Search Subdivision / Landmark / Barangay *</label>
                     <textarea id="delivery-address" [(ngModel)]="deliveryAddress" name="deliveryAddress" rows="2"
-                      placeholder="e.g. 123 Sample St, Brgy. Example, City" (ngModelChange)="onAddressChanged()"></textarea>
+                      placeholder="e.g. Tokyo Liquor House, Sarmiento Homes, SJDM, Bulacan"
+                      (ngModelChange)="onAddressChanged()"></textarea>
+                    <small class="address-hint">💡 Used to pinpoint your general location and calculate the delivery fee. You can also paste a Google Maps link instead of typing an address.</small>
+                  </div>
+                  <div class="field">
+                    <label for="delivery-unit-details">House/Unit No., Block &amp; Lot, Gate Details *</label>
+                    <textarea id="delivery-unit-details" [(ngModel)]="deliveryUnitDetails" name="deliveryUnitDetails" rows="2"
+                      placeholder="e.g. Blk 18 Lot 16 Phase 5, North Gate, Red Door"
+                      (ngModelChange)="onUnitDetailsChanged()"></textarea>
+                    <small class="address-hint">💡 Exact rider instructions — not used for the fee, just to find your door.</small>
+                    @if (unitDetailsError()) { <span class="field-error">{{ unitDetailsError() }}</span> }
                   </div>
                   <button type="button" class="btn btn-secondary btn-sm" [disabled]="delivery.loading() || !deliveryAddress.trim()" (click)="getDeliveryQuote()">
                     {{ delivery.loading() ? 'Getting Quote…' : 'Get Delivery Quote' }}
@@ -78,6 +88,7 @@ import { toAbsoluteImageUrl } from '../../../core/utils/image-url.util';
                         <p class="quote-address">Delivering to: <strong>{{ quote.resolvedAddress }}</strong></p>
                         <p class="quote-fee">Delivery Fee: <strong>₱{{ quote.feeTotal.toFixed(2) }}</strong></p>
                         <p class="quote-countdown">Quote expires in {{ formattedCountdown() }}</p>
+                        <a [href]="quote.googleMapsRouteUrl" target="_blank" rel="noopener" class="verify-route-link">📍 Verify Pinpoint on Google Maps</a>
                       </div>
                     } @else {
                       <p class="field-error">This quote has expired — please get a new one.</p>
@@ -142,7 +153,7 @@ import { toAbsoluteImageUrl } from '../../../core/utils/image-url.util';
               <p class="pickup-line"><strong>{{ fulfillmentType === 'DELIVERY' ? 'Ready by' : 'Pickup' }}:</strong> {{ cart.pickupTime() }}</p>
             }
             @if (fulfillmentType === 'DELIVERY' && delivery.quote() && !delivery.isExpired()) {
-              <p class="pickup-line"><strong>Deliver to:</strong> {{ delivery.quote()!.resolvedAddress }}</p>
+              <p class="pickup-line"><strong>Deliver to:</strong> {{ deliveryUnitDetails }}, {{ delivery.quote()!.resolvedAddress }}</p>
             }
             @for (item of cart.items(); track item.id) {
               <div class="review-row">
@@ -181,10 +192,12 @@ import { toAbsoluteImageUrl } from '../../../core/utils/image-url.util';
     .gcash-instructions { font-size: 13px; line-height: 1.5; margin: 0 0 10px; }
     .gcash-qr { display: block; width: 220px; height: 220px; max-width: 100%; object-fit: contain; margin: 0 auto 12px; border-radius: var(--radius-sm); background: #fff; padding: 8px; }
     .delivery-box { background: var(--color-subdued-pistachio); border-radius: var(--radius-sm); padding: 12px; margin: 4px 0 8px; }
+    .address-hint { display: block; font-size: 12px; color: var(--color-text-muted); margin-top: 4px; }
     .delivery-error { margin-top: 8px; }
     .quote-box { margin-top: 10px; font-size: 13px; line-height: 1.6; }
     .quote-fee { font-weight: 700; }
     .quote-countdown { color: var(--color-text-muted); font-size: 12px; }
+    .verify-route-link { display: inline-block; margin-top: 6px; font-size: 13px; font-weight: 700; color: var(--color-sage-700); text-decoration: underline; }
     .char-count { font-size: 12px; color: var(--color-text-muted); align-self: flex-end; }
     .file-chosen { font-size: 12px; color: var(--color-text-muted); }
     .pickup-line { font-size: 14px; margin-bottom: 8px; }
@@ -222,6 +235,8 @@ export class CheckoutPageComponent implements OnInit, OnDestroy {
 
   fulfillmentType: FulfillmentType = 'PICKUP';
   deliveryAddress = '';
+  deliveryUnitDetails = '';
+  unitDetailsError = signal('');
   private nowTick = signal(Date.now());
   private countdownTimer?: ReturnType<typeof setInterval>;
 
@@ -257,6 +272,10 @@ export class CheckoutPageComponent implements OnInit, OnDestroy {
 
   onAddressChanged() {
     this.delivery.clear();
+  }
+
+  onUnitDetailsChanged() {
+    this.unitDetailsError.set('');
   }
 
   getDeliveryQuote() {
@@ -299,6 +318,7 @@ export class CheckoutPageComponent implements OnInit, OnDestroy {
   submitOrder() {
     this.errorMessage.set('');
     this.receiptFileError.set('');
+    this.unitDetailsError.set('');
 
     if (!this.validateContactFields()) {
       this.errorMessage.set('Please fix the highlighted fields above.');
@@ -306,6 +326,11 @@ export class CheckoutPageComponent implements OnInit, OnDestroy {
     }
     if (this.paymentMethod === 'GCASH_MANUAL' && !this.receiptFile()) {
       this.receiptFileError.set('Please upload a screenshot of your GCash receipt.');
+      this.errorMessage.set('Please fix the highlighted fields above.');
+      return;
+    }
+    if (this.fulfillmentType === 'DELIVERY' && !this.deliveryUnitDetails.trim()) {
+      this.unitDetailsError.set('Please provide house/unit no., block & lot, or gate details for the rider.');
       this.errorMessage.set('Please fix the highlighted fields above.');
       return;
     }
@@ -329,6 +354,7 @@ export class CheckoutPageComponent implements OnInit, OnDestroy {
       receiptFile: this.paymentMethod === 'GCASH_MANUAL' ? this.receiptFile() ?? undefined : undefined,
       fulfillmentType: this.fulfillmentType,
       deliveryQuotationId: this.fulfillmentType === 'DELIVERY' ? this.delivery.quote()?.quotationId : undefined,
+      deliveryUnitDetails: this.fulfillmentType === 'DELIVERY' ? this.deliveryUnitDetails.trim() : undefined,
       items: this.cart.items(),
       subtotal: this.cart.subtotal(),
       tax: this.cart.tax(),

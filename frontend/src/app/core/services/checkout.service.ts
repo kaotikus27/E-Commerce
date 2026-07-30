@@ -36,6 +36,7 @@ export class CheckoutService {
       notes: request.notes,
       fulfillmentType: request.fulfillmentType,
       deliveryQuotationId: request.deliveryQuotationId,
+      deliveryUnitDetails: request.deliveryUnitDetails,
     };
 
     // The backend endpoint always expects multipart/form-data (so the same endpoint can

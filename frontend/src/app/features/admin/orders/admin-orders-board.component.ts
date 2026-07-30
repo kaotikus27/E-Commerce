@@ -47,6 +47,11 @@ const ORIGINAL_TITLE = 'Home by Bami — Admin';
           <div class="order-card card">
             <ng-container *ngTemplateOutlet="cardHeader; context: { order }"></ng-container>
             <div class="actions">
+              @if (order.fulfillmentType === 'DELIVERY' && order.deliveryStatus === 'NOT_DISPATCHED') {
+                <button class="btn btn-secondary btn-sm" [disabled]="dispatching().has(order.id)" (click)="dispatchDelivery(order)">
+                  {{ dispatching().has(order.id) ? 'Calling Rider…' : '🛵 Call Lalamove Rider' }}
+                </button>
+              }
               <button class="btn btn-primary btn-sm" (click)="advance(order, 'READY')">Mark Ready</button>
             </div>
           </div>
@@ -61,6 +66,11 @@ const ORIGINAL_TITLE = 'Home by Bami — Admin';
           <div class="order-card card">
             <ng-container *ngTemplateOutlet="cardHeader; context: { order }"></ng-container>
             <div class="actions">
+              @if (order.fulfillmentType === 'DELIVERY' && order.deliveryStatus === 'NOT_DISPATCHED') {
+                <button class="btn btn-secondary btn-sm" [disabled]="dispatching().has(order.id)" (click)="dispatchDelivery(order)">
+                  {{ dispatching().has(order.id) ? 'Calling Rider…' : '🛵 Call Lalamove Rider' }}
+                </button>
+              }
               <button class="btn btn-primary btn-sm" (click)="advance(order, 'COMPLETED')">Mark Completed</button>
             </div>
           </div>
@@ -80,6 +90,18 @@ const ORIGINAL_TITLE = 'Home by Bami — Admin';
       @if (order.fulfillmentType === 'DELIVERY') {
         <div class="delivery-info">
           🛵 Deliver to: <strong>{{ order.deliveryAddress }}</strong> — Fee: ₱{{ (order.deliveryFee ?? 0).toFixed(2) }}
+          @if (order.deliveryUnitDetails) {
+            <div class="delivery-unit-details">📍 Rider instructions: <strong>{{ order.deliveryUnitDetails }}</strong></div>
+          }
+          @if (order.deliveryStatus !== 'NOT_DISPATCHED') {
+            <div class="delivery-status-badge">🛵 {{ order.deliveryStatus }}</div>
+            @if (order.driverName) {
+              <div class="driver-info">Driver: <strong>{{ order.driverName }}</strong> · {{ order.driverPhone }} @if (order.driverPlateNumber) { · {{ order.driverPlateNumber }} }</div>
+            }
+            @if (order.trackingShareLink) {
+              <a [href]="order.trackingShareLink" target="_blank" rel="noopener" class="tracking-link">📍 Track Rider Live</a>
+            }
+          }
         </div>
       }
       <div class="payment-row">
@@ -150,6 +172,10 @@ const ORIGINAL_TITLE = 'Home by Bami — Admin';
     .customer { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
     .pickup { font-size: 12px; color: var(--color-sage-700); margin-bottom: 6px; }
     .delivery-info { font-size: 12px; color: var(--color-text-muted); margin-bottom: 8px; }
+    .delivery-unit-details { margin-top: 4px; color: var(--color-status-pending); }
+    .delivery-status-badge { margin-top: 6px; font-weight: 700; color: var(--color-sage-700); }
+    .driver-info { margin-top: 2px; font-size: 12px; }
+    .tracking-link { display: inline-block; margin-top: 4px; font-size: 12px; font-weight: 700; color: var(--color-sage-700); text-decoration: underline; }
     .payment-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
     .payment { font-size: 12px; color: var(--color-text-muted); }
     .pay-status { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: var(--radius-pill); background: var(--color-subdued-pistachio); color: var(--color-status-closed); }
@@ -187,6 +213,9 @@ export class AdminOrdersBoardComponent implements OnInit, OnDestroy {
    *  from the customer-typed/OCR-fallback value the first time each order is seen, so re-polling
    *  doesn't clobber whatever the admin is mid-typing. */
   editedRefs = signal<Record<string, string>>({});
+
+  /** Order ids currently mid-dispatch — disables the "Call Rider" button to prevent double-clicks. */
+  dispatching = signal<Set<string>>(new Set());
 
   private knownReceivedIds = new Set<string>();
   private seededRefIds = new Set<string>();
@@ -260,6 +289,18 @@ export class AdminOrdersBoardComponent implements OnInit, OnDestroy {
     if (!file) return;
     this.orderService.uploadReceipt(order.id, file).subscribe(updated => {
       if (updated) this.notifications.success(`Order #${order.id} receipt image updated.`);
+    });
+  }
+
+  dispatchDelivery(order: AdminOrder) {
+    this.dispatching.update(set => new Set(set).add(order.id));
+    this.orderService.dispatchDelivery(order.id).subscribe(updated => {
+      this.dispatching.update(set => {
+        const next = new Set(set);
+        next.delete(order.id);
+        return next;
+      });
+      if (updated) this.notifications.success(`Order #${order.id} dispatched to Lalamove.`);
     });
   }
 

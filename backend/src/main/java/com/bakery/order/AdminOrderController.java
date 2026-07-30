@@ -43,4 +43,9 @@ public class AdminOrderController {
                                            @RequestPart("receiptImage") MultipartFile receiptImage) {
         return orderService.uploadReceiptForVerification(orderNumber, receiptImage);
     }
+
+    @PatchMapping("/{orderNumber}/dispatch")
+    public OrderResponseDto dispatchDelivery(@PathVariable String orderNumber) {
+        return orderService.dispatchDelivery(orderNumber);
+    }
 }

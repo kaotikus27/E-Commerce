@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { catchError, of, tap } from 'rxjs';
 import { environment } from '../../../../environments/environment';
@@ -31,8 +31,8 @@ export class AdminStoreSettingsService {
   saveSchedule(payload: StoreSettings) {
     return this.api.put<StoreSettings>('/admin/store-settings', payload).pipe(
       tap(saved => this.settings.set(saved)),
-      catchError(() => {
-        this.notifications.error('Could not save store settings.');
+      catchError((err: HttpErrorResponse) => {
+        this.notifications.error(err.error?.message || 'Could not save store settings.');
         return of(null);
       })
     );

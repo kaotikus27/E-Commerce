@@ -23,6 +23,7 @@ public class LalamoveClient {
     private final String apiKey;
     private final String apiSecret;
     private final String market;
+    private final String language;
 
     private volatile JsonNode cachedCities;
 
@@ -31,12 +32,14 @@ public class LalamoveClient {
                            @Value("${lalamove.api-key}") String apiKey,
                            @Value("${lalamove.api-secret}") String apiSecret,
                            @Value("${lalamove.market}") String market,
+                           @Value("${lalamove.language}") String language,
                            LalamoveHmacSigner signer,
                            ObjectMapper objectMapper) {
         this.restClient = restClientBuilder.baseUrl(baseUrl).build();
         this.apiKey = apiKey;
         this.apiSecret = apiSecret;
         this.market = market;
+        this.language = language;
         this.signer = signer;
         this.objectMapper = objectMapper;
     }
@@ -76,6 +79,7 @@ public class LalamoveClient {
         ObjectNode body = objectMapper.createObjectNode();
         ObjectNode data = body.putObject("data");
         data.put("serviceType", serviceType);
+        data.put("language", language);
         data.putArray("specialRequests");
         var stops = data.putArray("stops");
         stops.add(stopNode(originLat, originLng, originAddress));
@@ -93,13 +97,58 @@ public class LalamoveClient {
         String quotationId = responseData.path("quotationId").asText(null);
         String total = responseData.path("priceBreakdown").path("total").asText(null);
         String expiresAtRaw = responseData.path("expiresAt").asText(null);
+        JsonNode responseStops = responseData.path("stops");
+        String originStopId = responseStops.path(0).path("stopId").asText(null);
+        String destinationStopId = responseStops.path(1).path("stopId").asText(null);
 
-        if (quotationId == null || total == null) {
+        if (quotationId == null || total == null || originStopId == null || destinationStopId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Lalamove did not return a valid quotation.");
         }
 
         Instant expiresAt = expiresAtRaw != null ? Instant.parse(expiresAtRaw) : Instant.now().plusSeconds(300);
-        return new LalamoveQuotation(quotationId, new BigDecimal(total), expiresAt);
+        return new LalamoveQuotation(quotationId, new BigDecimal(total), expiresAt, originStopId, destinationStopId);
+    }
+
+    public LalamoveOrder placeOrder(String quotationId, String senderStopId, String senderName, String senderPhone,
+                                     String recipientStopId, String recipientName, String recipientPhone, String remarks) {
+        requireConfigured();
+        String path = "/v3/orders";
+
+        ObjectNode body = objectMapper.createObjectNode();
+        ObjectNode data = body.putObject("data");
+        data.put("quotationId", quotationId);
+
+        ObjectNode sender = data.putObject("sender");
+        sender.put("stopId", senderStopId);
+        sender.put("name", senderName);
+        sender.put("phone", senderPhone);
+
+        ObjectNode recipient = objectMapper.createObjectNode();
+        recipient.put("stopId", recipientStopId);
+        recipient.put("name", recipientName);
+        recipient.put("phone", recipientPhone);
+        if (remarks != null && !remarks.isBlank()) {
+            recipient.put("remarks", remarks);
+        }
+        data.putArray("recipients").add(recipient);
+
+        String bodyJson;
+        try {
+            bodyJson = objectMapper.writeValueAsString(body);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to build Lalamove order request", e);
+        }
+
+        JsonNode responseData = parseJson(signedRequest("POST", path, bodyJson)).path("data");
+        String lalamoveOrderId = responseData.path("orderId").asText(null);
+        String status = responseData.path("status").asText(null);
+        String shareLink = responseData.path("shareLink").asText(null);
+
+        if (lalamoveOrderId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Lalamove did not return a valid order id.");
+        }
+
+        return new LalamoveOrder(lalamoveOrderId, status, shareLink);
     }
 
     private ObjectNode stopNode(BigDecimal lat, BigDecimal lng, String address) {
