@@ -37,9 +37,14 @@ public class StoreSettings {
     private String gcashQrImagePath;
 
     /** The store's physical pinpoint — shown publicly and used as the Lalamove delivery quote
-     *  origin. Re-geocoded automatically whenever an admin changes storeAddress. */
+     *  origin. Re-geocoded automatically whenever an admin changes storeAddress.
+     *  precision/scale explicit: Hibernate defaults an unannotated BigDecimal column to scale 2,
+     *  which silently rounds GPS coordinates to ~1km precision — enough to land a reverse-geocode
+     *  on a different building than the one actually pinned. */
     private String storeAddress;
+    @Column(precision = 11, scale = 8)
     private BigDecimal storeLatitude;
+    @Column(precision = 11, scale = 8)
     private BigDecimal storeLongitude;
 
     /** E.164 format (e.g. "+639171234567") — required as the Lalamove dispatch sender phone. */

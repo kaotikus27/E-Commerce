@@ -9,9 +9,16 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 
 @Service
 public class DeliveryQuoteService {
+
+    // Two results are only treated as genuinely ambiguous (worth asking the customer to pick)
+    // when they're farther apart than this — natural geocoding jitter for a single real place is
+    // well under 1km, while a name that exists in more than one barangay/city is typically many
+    // km apart (today's real case: two different Muzons, ~15km apart).
+    private static final double AMBIGUITY_THRESHOLD_KM = 1.5;
 
     private final GeocodingService geocodingService;
     private final LalamoveClient lalamoveClient;
@@ -32,8 +39,26 @@ public class DeliveryQuoteService {
     }
 
     @Transactional
-    public DeliveryQuoteResponseDto requestQuote(String address, String serviceType) {
-        GeocodeResult destination = geocodingService.resolveAddressOrMapsUrl(address);
+    public DeliveryQuoteResultDto requestQuote(String address, String serviceType,
+                                                BigDecimal chosenLat, BigDecimal chosenLng, String chosenLabel) {
+        GeocodeResult destination;
+        if (chosenLat != null && chosenLng != null) {
+            // An exact point was already chosen — either from a candidate the customer picked, or
+            // a pin they dragged on the map. Skip forward-geocoding entirely; if the caller didn't
+            // already know a label for this exact point (e.g. a freshly dropped pin), one reverse-
+            // geocode call gets a clean display address for it.
+            destination = (chosenLabel != null && !chosenLabel.isBlank())
+                    ? new GeocodeResult(chosenLabel, chosenLat, chosenLng)
+                    : geocodingService.reverseGeocode(chosenLat, chosenLng);
+        } else {
+            List<GeocodeResult> candidates = geocodingService.resolveCandidates(address);
+            List<GeocodeResult> distinct = keepGenuinelyDistinct(candidates);
+            if (distinct.size() > 1) {
+                return DeliveryQuoteResultDto.ambiguous(distinct.stream().map(GeocodeCandidateDto::from).toList());
+            }
+            destination = distinct.get(0);
+        }
+
         String resolvedServiceType = (serviceType == null || serviceType.isBlank()) ? defaultServiceType : serviceType;
 
         LalamoveQuotation quotation = lalamoveClient.getQuotation(
@@ -58,7 +83,34 @@ public class DeliveryQuoteService {
                 destination.latitude(), destination.longitude()
         );
 
-        return DeliveryQuoteResponseDto.from(deliveryQuoteRepository.save(quote), googleMapsRouteUrl);
+        return DeliveryQuoteResultDto.resolved(DeliveryQuoteResponseDto.from(deliveryQuoteRepository.save(quote), googleMapsRouteUrl));
+    }
+
+    /** Keeps the top-ranked candidate plus any other candidate more than
+     *  {@link #AMBIGUITY_THRESHOLD_KM} away from it — near-duplicate results for the same real
+     *  place collapse down to just the first, so the customer is only asked to disambiguate when
+     *  the candidates are actually different places. */
+    private List<GeocodeResult> keepGenuinelyDistinct(List<GeocodeResult> candidates) {
+        GeocodeResult best = candidates.get(0);
+        List<GeocodeResult> distinct = new java.util.ArrayList<>();
+        distinct.add(best);
+        for (int i = 1; i < candidates.size(); i++) {
+            GeocodeResult candidate = candidates.get(i);
+            if (haversineKm(best.latitude(), best.longitude(), candidate.latitude(), candidate.longitude()) > AMBIGUITY_THRESHOLD_KM) {
+                distinct.add(candidate);
+            }
+        }
+        return distinct;
+    }
+
+    private double haversineKm(BigDecimal lat1, BigDecimal lng1, BigDecimal lat2, BigDecimal lng2) {
+        final double earthRadiusKm = 6371;
+        double dLat = Math.toRadians(lat2.doubleValue() - lat1.doubleValue());
+        double dLng = Math.toRadians(lng2.doubleValue() - lng1.doubleValue());
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1.doubleValue())) * Math.cos(Math.toRadians(lat2.doubleValue()))
+                * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
     /** Plain, keyless Google Maps directions deep link — driving mode approximates a motorcycle

@@ -7,10 +7,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Map;
 
 /** Thin, signed wrapper around Lalamove's v3 REST API. Every method fails fast with a clear 503
  *  if credentials aren't configured, rather than attempting a signed call that can only fail. */
@@ -168,6 +170,15 @@ public class LalamoveClient {
         }
     }
 
+    // Lalamove's own error ids (from their v3 error responses), mapped to a message a customer can
+    // actually act on. Anything not listed here falls back to a generic message — the raw
+    // Lalamove response is logged server-side for debugging but never shown to the customer.
+    private static final Map<String, String> FRIENDLY_ERROR_MESSAGES = Map.of(
+            "ERR_OUT_OF_SERVICE_AREA", "Sorry, we don't currently deliver to that address. Please try a nearby landmark or double-check the address.",
+            "ERR_INVALID_QUOTATION", "That delivery quote has expired — please request a new one.",
+            "ERR_INSUFFICIENT_BALANCE", "Delivery is temporarily unavailable — please try again shortly or contact the store."
+    );
+
     private String signedRequest(String method, String path, String body) {
         long timestamp = System.currentTimeMillis();
         String token = signer.sign(apiKey, apiSecret, timestamp, method, path, body);
@@ -189,8 +200,26 @@ public class LalamoveClient {
                     .body(body)
                     .retrieve()
                     .body(String.class);
+        } catch (RestClientResponseException e) {
+            String rawBody = e.getResponseBodyAsString();
+            System.err.println("[Lalamove] " + method + " " + path + " -> " + e.getStatusCode() + ": " + rawBody);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, friendlyMessage(rawBody), e);
         } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Lalamove API request failed: " + e.getMessage(), e);
+            System.err.println("[Lalamove] " + method + " " + path + " -> " + e.getMessage());
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Could not reach Lalamove right now — please try again.", e);
         }
+    }
+
+    private String friendlyMessage(String rawBody) {
+        try {
+            JsonNode errors = objectMapper.readTree(rawBody).path("errors");
+            String errorId = errors.path(0).path("id").asText(null);
+            if (errorId != null && FRIENDLY_ERROR_MESSAGES.containsKey(errorId)) {
+                return FRIENDLY_ERROR_MESSAGES.get(errorId);
+            }
+        } catch (Exception ignored) {
+            // Not the JSON shape we expect — fall through to the generic message below.
+        }
+        return "Could not get a delivery quote right now — please try again.";
     }
 }

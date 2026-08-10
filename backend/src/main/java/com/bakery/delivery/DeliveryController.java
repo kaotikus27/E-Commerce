@@ -15,8 +15,9 @@ public class DeliveryController {
     private final LalamoveClient lalamoveClient;
 
     @PostMapping("/quote")
-    public DeliveryQuoteResponseDto getQuote(@Valid @RequestBody DeliveryQuoteRequestDto request) {
-        return deliveryQuoteService.requestQuote(request.address(), request.serviceType());
+    public DeliveryQuoteResultDto getQuote(@Valid @RequestBody DeliveryQuoteRequestDto request) {
+        return deliveryQuoteService.requestQuote(request.address(), request.serviceType(),
+                request.latitude(), request.longitude(), request.resolvedLabel());
     }
 
     /** Raw passthrough of Lalamove's city capabilities — deliberately not reshaped into our own DTO

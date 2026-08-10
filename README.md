@@ -101,6 +101,11 @@ Node 22): all routes lazy-load correctly and the bundle compiles with zero error
   Tailwind/PostCSS toolchain, so hand-written CSS utility classes were used instead to guarantee a
   working build. Swapping in Tailwind later is straightforward since the same token names are used.
 
+## Further reading
+
+- [`docs/delivery-fulfillment.md`](./docs/delivery-fulfillment.md) — how a delivery order goes from checkout quote to a dispatched rider, including the Lalamove webhook signature verification.
+- [`docs/user-location-capture.md`](./docs/user-location-capture.md) — how the checkout flow resolves an exact delivery pinpoint (search → disambiguation → draggable map → structured rider notes).
+
 ## Notes on verification
 
 - The Angular frontend was installed and built successfully in this environment (`ng build` completes

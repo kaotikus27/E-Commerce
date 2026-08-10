@@ -172,3 +172,12 @@ img { max-width: 100%; display: block; }
 @media (min-width: 960px) {
   .grid-responsive { grid-template-columns: repeat(4, 1fr); }
 }
+
+/* Leaflet's divIcon renders outside Angular's component-scoped styles, so the delivery pin
+   icon (see delivery-map.component.ts) needs to live here instead. */
+.delivery-pin-icon {
+  font-size: 26px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.35));
+  cursor: grab;
+}

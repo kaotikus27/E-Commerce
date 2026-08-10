@@ -7,14 +7,16 @@ import { CheckoutService } from '../../../core/services/checkout.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { StoreService } from '../../../core/services/store.service';
 import { DeliveryService } from '../../../core/services/delivery.service';
+import { GeocodeCandidate } from '../../../core/models/delivery.model';
 import { NotificationService } from '../../../core/services/notification.service';
 import { FulfillmentType, OrderRequest, PaymentMethod } from '../../../core/models/order.model';
 import { toAbsoluteImageUrl } from '../../../core/utils/image-url.util';
+import { DeliveryMapComponent } from '../delivery-map/delivery-map.component';
 
 @Component({
   selector: 'app-checkout-page',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, DeliveryMapComponent],
   template: `
     <section class="container checkout-page">
       <h1>Checkout</h1>
@@ -82,6 +84,17 @@ import { toAbsoluteImageUrl } from '../../../core/utils/image-url.util';
                     <p class="field-error delivery-error">{{ delivery.error() }}</p>
                   }
 
+                  @if (delivery.candidates(); as candidates) {
+                    <div class="candidates-box">
+                      <p class="candidates-hint">That matched more than one place — which one did you mean?</p>
+                      @for (candidate of candidates; track candidate.label) {
+                        <button type="button" class="candidate-option" [disabled]="delivery.loading()" (click)="chooseCandidate(candidate)">
+                          📍 {{ candidate.label }}
+                        </button>
+                      }
+                    </div>
+                  }
+
                   @if (delivery.quote(); as quote) {
                     @if (!delivery.isExpired()) {
                       <div class="quote-box">
@@ -89,6 +102,18 @@ import { toAbsoluteImageUrl } from '../../../core/utils/image-url.util';
                         <p class="quote-fee">Delivery Fee: <strong>₱{{ quote.feeTotal.toFixed(2) }}</strong></p>
                         <p class="quote-countdown">Quote expires in {{ formattedCountdown() }}</p>
                         <a [href]="quote.googleMapsRouteUrl" target="_blank" rel="noopener" class="verify-route-link">📍 Verify Pinpoint on Google Maps</a>
+
+                        <p class="map-hint">Not quite right? Drag the pin to your exact door.</p>
+                        <app-delivery-map
+                          [latitude]="quote.latitude"
+                          [longitude]="quote.longitude"
+                          (pinMoved)="onPinMoved($event)">
+                        </app-delivery-map>
+                        @if (adjustedPin()) {
+                          <button type="button" class="btn btn-secondary btn-sm confirm-pin-btn" [disabled]="delivery.loading()" (click)="confirmAdjustedPin()">
+                            {{ delivery.loading() ? 'Updating…' : 'Confirm new location' }}
+                          </button>
+                        }
                       </div>
                     } @else {
                       <p class="field-error">This quote has expired — please get a new one.</p>
@@ -115,7 +140,7 @@ import { toAbsoluteImageUrl } from '../../../core/utils/image-url.util';
                 <div class="gcash-box">
                   @if (store.gcashNumber()) {
                     <p class="gcash-instructions">
-                      Send <strong>₱{{ cart.total().toFixed(2) }}</strong> to
+                      Send <strong>₱{{ estimatedTotal().toFixed(2) }}</strong> to
                       <strong>{{ store.gcashAccountName() }}</strong> — {{ store.gcashNumber() }},
                       then upload a screenshot of your GCash receipt below.
                     </p>
@@ -194,7 +219,13 @@ import { toAbsoluteImageUrl } from '../../../core/utils/image-url.util';
     .delivery-box { background: var(--color-subdued-pistachio); border-radius: var(--radius-sm); padding: 12px; margin: 4px 0 8px; }
     .address-hint { display: block; font-size: 12px; color: var(--color-text-muted); margin-top: 4px; }
     .delivery-error { margin-top: 8px; }
+    .candidates-box { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+    .candidates-hint { font-size: 13px; font-weight: 600; margin: 0; }
+    .candidate-option { text-align: left; background: #fff; border: 1px solid var(--color-pistachio); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 13px; cursor: pointer; }
+    .candidate-option:hover { border-color: var(--color-sage-700); }
     .quote-box { margin-top: 10px; font-size: 13px; line-height: 1.6; }
+    .map-hint { font-size: 12px; color: var(--color-text-muted); margin: 8px 0 6px; }
+    .confirm-pin-btn { margin-top: 8px; }
     .quote-fee { font-weight: 700; }
     .quote-countdown { color: var(--color-text-muted); font-size: 12px; }
     .verify-route-link { display: inline-block; margin-top: 6px; font-size: 13px; font-weight: 700; color: var(--color-sage-700); text-decoration: underline; }
@@ -237,6 +268,8 @@ export class CheckoutPageComponent implements OnInit, OnDestroy {
   deliveryAddress = '';
   deliveryUnitDetails = '';
   unitDetailsError = signal('');
+  /** Set while the customer has dragged the map pin but not yet confirmed the adjustment. */
+  adjustedPin = signal<{ latitude: number; longitude: number } | null>(null);
   private nowTick = signal(Date.now());
   private countdownTimer?: ReturnType<typeof setInterval>;
 
@@ -254,7 +287,11 @@ export class CheckoutPageComponent implements OnInit, OnDestroy {
   });
 
   readonly estimatedTotal = computed(() => {
-    const deliveryFee = this.fulfillmentType === 'DELIVERY' ? (this.delivery.quote()?.feeTotal ?? 0) : 0;
+    // Read quote() unconditionally (not inside the ternary) so it's always a tracked dependency —
+    // otherwise, on the first evaluation while still on PICKUP, the DELIVERY branch — and its
+    // quote() read — is skipped entirely, and this computed never re-runs when a quote arrives later.
+    const quoteFee = this.delivery.quote()?.feeTotal ?? 0;
+    const deliveryFee = this.fulfillmentType === 'DELIVERY' ? quoteFee : 0;
     return this.cart.total() + deliveryFee;
   });
 
@@ -268,10 +305,12 @@ export class CheckoutPageComponent implements OnInit, OnDestroy {
 
   onFulfillmentTypeChange() {
     this.delivery.clear();
+    this.adjustedPin.set(null);
   }
 
   onAddressChanged() {
     this.delivery.clear();
+    this.adjustedPin.set(null);
   }
 
   onUnitDetailsChanged() {
@@ -279,7 +318,26 @@ export class CheckoutPageComponent implements OnInit, OnDestroy {
   }
 
   getDeliveryQuote() {
+    this.adjustedPin.set(null);
     this.delivery.getQuote(this.deliveryAddress.trim()).subscribe();
+  }
+
+  chooseCandidate(candidate: GeocodeCandidate) {
+    this.adjustedPin.set(null);
+    this.delivery.chooseCandidate(candidate).subscribe();
+  }
+
+  /** Pin dragged on the map — just remember it locally; re-quoting happens only once the
+   *  customer explicitly confirms, so we don't hit Lalamove on every drag. */
+  onPinMoved(position: { latitude: number; longitude: number }) {
+    this.adjustedPin.set(position);
+  }
+
+  confirmAdjustedPin() {
+    const position = this.adjustedPin();
+    if (!position) return;
+    this.delivery.chooseCandidate({ label: '', latitude: position.latitude, longitude: position.longitude })
+      .subscribe(() => this.adjustedPin.set(null));
   }
 
   onReceiptFileSelected(event: Event) {
@@ -358,7 +416,7 @@ export class CheckoutPageComponent implements OnInit, OnDestroy {
       items: this.cart.items(),
       subtotal: this.cart.subtotal(),
       tax: this.cart.tax(),
-      total: this.cart.total(),
+      total: this.estimatedTotal(),
       notes: this.notes.trim() || undefined,
     };
 

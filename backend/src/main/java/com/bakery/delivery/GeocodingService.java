@@ -9,8 +9,11 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -25,6 +28,13 @@ public class GeocodingService {
     // "@lat,lng,zoom" in the URL path, which is just wherever the map view happened to be panned.
     private static final Pattern MAPS_URL_PIN_PATTERN = Pattern.compile("!3d(-?\\d+\\.\\d+)!4d(-?\\d+\\.\\d+)");
     private static final Pattern MAPS_URL_VIEWPORT_PATTERN = Pattern.compile("@(-?\\d+\\.\\d+),(-?\\d+\\.\\d+),");
+    // A "place" Maps URL (as opposed to a bare pin-drop) embeds the place's own name right in the
+    // path, e.g. ".../maps/place/Home+Cafe+by+Bami/@14.86...". Reverse-geocoding the bare
+    // coordinates instead of using this name is unreliable — it finds whatever Google considers
+    // closest to that exact point, which can be a different business entirely if two POIs sit
+    // near the same spot (this happened: reverse-geocoding the café's own pin returned a
+    // different, unrelated shop next door instead of the café).
+    private static final Pattern MAPS_URL_PLACE_NAME_PATTERN = Pattern.compile("/maps/place/([^/@]+)");
 
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
@@ -40,14 +50,40 @@ public class GeocodingService {
 
     /** Accepts either a plain typed address or a pasted Google Maps URL — if it's a Maps URL, the
      *  exact embedded pin coordinates are used directly (cheaper and more precise than a text
-     *  search) and reverse-geocoded just to get a clean display address; otherwise falls back to
-     *  a normal forward geocode of the text. */
+     *  search); the display label comes from the place name embedded in the URL itself when
+     *  present (a "place" URL), falling back to a reverse-geocode only for a bare pin-drop URL
+     *  that has no name of its own. A plain typed address falls back to a normal forward geocode. */
     public GeocodeResult resolveAddressOrMapsUrl(String input) {
         BigDecimal[] pinCoordinates = extractCoordinatesFromMapsUrl(input);
         if (pinCoordinates != null) {
-            return reverseGeocode(pinCoordinates[0], pinCoordinates[1]);
+            return resolvePinLabel(input, pinCoordinates);
         }
         return geocode(input);
+    }
+
+    /** Same acceptance rules as {@link #resolveAddressOrMapsUrl}, but for a plain typed address
+     *  returns every plausible candidate instead of just the top one — a pasted Maps URL always
+     *  resolves to exactly one exact pin, so it's never ambiguous and always comes back as a
+     *  single-element list. */
+    public List<GeocodeResult> resolveCandidates(String input) {
+        BigDecimal[] pinCoordinates = extractCoordinatesFromMapsUrl(input);
+        if (pinCoordinates != null) {
+            return List.of(resolvePinLabel(input, pinCoordinates));
+        }
+        return geocodeCandidates(input);
+    }
+
+    private GeocodeResult resolvePinLabel(String mapsUrl, BigDecimal[] pinCoordinates) {
+        String placeName = extractPlaceNameFromMapsUrl(mapsUrl);
+        return placeName != null
+                ? new GeocodeResult(placeName, pinCoordinates[0], pinCoordinates[1])
+                : reverseGeocode(pinCoordinates[0], pinCoordinates[1]);
+    }
+
+    private String extractPlaceNameFromMapsUrl(String input) {
+        Matcher nameMatcher = MAPS_URL_PLACE_NAME_PATTERN.matcher(input.trim());
+        if (!nameMatcher.find()) return null;
+        return URLDecoder.decode(nameMatcher.group(1), StandardCharsets.UTF_8);
     }
 
     private BigDecimal[] extractCoordinatesFromMapsUrl(String input) {
@@ -70,23 +106,52 @@ public class GeocodingService {
     }
 
     public GeocodeResult geocode(String address) {
+        JsonNode firstResult = fetchResults(geocodeLookupPath(address)).get(0);
+        return toGeocodeResult(firstResult, address);
+    }
+
+    /** Same lookup as {@link #geocode}, but returns every candidate Google found instead of just
+     *  the first — used to detect genuinely ambiguous searches (e.g. a landmark name that exists
+     *  in more than one barangay/city) so the customer can pick the right one, rather than
+     *  silently trusting whichever result happened to rank first. Same single API call either
+     *  way, so this costs nothing extra. */
+    public List<GeocodeResult> geocodeCandidates(String address) {
+        JsonNode results = fetchResults(geocodeLookupPath(address));
+        List<GeocodeResult> candidates = new ArrayList<>();
+        for (JsonNode result : results) {
+            candidates.add(toGeocodeResult(result, address));
+            if (candidates.size() == 3) break; // top 3 is plenty to disambiguate; deeper matches are rarely relevant
+        }
+        return candidates;
+    }
+
+    private String geocodeLookupPath(String address) {
         requireConfigured();
+
+        // Google's address parser is measurably sensitive to spacing around commas for
+        // compound business-name + area-name queries — "landmark, area" and "landmark , area"
+        // can tokenize differently enough to change the result entirely (confirmed: "tokyo
+        // liqour house, muzon" degraded to the whole-country centroid, while the same text with
+        // ", " normalized resolved correctly). Normalizing to a single consistent "word, word"
+        // form removes that variance for free.
+        String normalized = address.trim().replaceAll("\\s*,\\s*", ", ");
 
         // This app only ever serves Philippine addresses — append the country if the customer
         // didn't type it, so short/ambiguous inputs (just a street + barangay) still resolve
         // correctly instead of matching a same-named street elsewhere in the world.
-        String addressForLookup = address.trim().toLowerCase().endsWith("philippines")
-                ? address.trim() : address.trim() + ", Philippines";
+        String addressForLookup = normalized.toLowerCase().endsWith("philippines")
+                ? normalized : normalized + ", Philippines";
         String encodedAddress = URLEncoder.encode(addressForLookup, StandardCharsets.UTF_8);
 
         // components=country:PH is a hard filter (excludes non-PH results entirely); region=ph is
         // just a ranking bias. Using both is stronger than either alone.
-        String path = "/json?address=" + encodedAddress + "&region=ph&components=country:PH&key=" + apiKey;
-        JsonNode firstResult = fetchFirstResult(path);
+        return "/json?address=" + encodedAddress + "&region=ph&components=country:PH&key=" + apiKey;
+    }
 
-        JsonNode location = firstResult.path("geometry").path("location");
+    private GeocodeResult toGeocodeResult(JsonNode result, String fallbackAddress) {
+        JsonNode location = result.path("geometry").path("location");
         return new GeocodeResult(
-                firstResult.path("formatted_address").asText(address),
+                result.path("formatted_address").asText(fallbackAddress),
                 new BigDecimal(location.path("lat").asText("0")),
                 new BigDecimal(location.path("lng").asText("0"))
         );
@@ -96,7 +161,7 @@ public class GeocodingService {
         requireConfigured();
 
         String path = "/json?latlng=" + lat.toPlainString() + "," + lng.toPlainString() + "&key=" + apiKey;
-        JsonNode firstResult = fetchFirstResult(path);
+        JsonNode firstResult = fetchResults(path).get(0);
 
         return new GeocodeResult(
                 firstResult.path("formatted_address").asText(lat.toPlainString() + ", " + lng.toPlainString()),
@@ -111,7 +176,7 @@ public class GeocodingService {
         }
     }
 
-    private JsonNode fetchFirstResult(String path) {
+    private JsonNode fetchResults(String path) {
         String raw;
         try {
             raw = restClient.get().uri(path).retrieve().body(String.class);
@@ -141,6 +206,31 @@ public class GeocodingService {
                     "Address lookup failed (" + status + (errorMessage.isBlank() ? "" : ": " + errorMessage) + ").");
         }
 
-        return results.get(0);
+        JsonNode usefulResults = excludeCountryLevelMatches(results);
+        if (usefulResults.isEmpty()) {
+            // Google returned only a whole-country match (e.g. the search text didn't tokenize
+            // into anything it recognized as a place) — that's not a usable location, so this is
+            // functionally the same as ZERO_RESULTS. Without this check, a garbage match like
+            // this would otherwise pass a real-looking (but meaningless) coordinate — the
+            // country's own centroid — straight through to Lalamove, which then rejects it with
+            // a confusing "out of service area" instead of a clear "couldn't find that address".
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Couldn't find that address — please check it and try again.");
+        }
+        return usefulResults;
+    }
+
+    private JsonNode excludeCountryLevelMatches(JsonNode results) {
+        var filtered = objectMapper.createArrayNode();
+        for (JsonNode result : results) {
+            boolean isCountryLevel = false;
+            for (JsonNode type : result.path("types")) {
+                if ("country".equals(type.asText())) {
+                    isCountryLevel = true;
+                    break;
+                }
+            }
+            if (!isCountryLevel) filtered.add(result);
+        }
+        return filtered;
     }
 }

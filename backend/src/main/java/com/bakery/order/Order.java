@@ -65,7 +65,12 @@ public class Order {
      *  from deliveryUnitDetails so imprecise PH lot/block addressing doesn't have to fight the
      *  geocoder; the fee only needs subdivision-level accuracy. */
     private String deliveryAddress;
+    // Explicit precision/scale — an unannotated BigDecimal column defaults to scale 2 in
+    // Hibernate, rounding GPS coordinates to ~1km precision (see StoreSettings for the bug this
+    // caused in practice).
+    @Column(precision = 11, scale = 8)
     private BigDecimal deliveryLatitude;
+    @Column(precision = 11, scale = 8)
     private BigDecimal deliveryLongitude;
 
     /** Human-readable rider instructions (Block/Lot/Phase/Gate/landmark) — never geocoded, just

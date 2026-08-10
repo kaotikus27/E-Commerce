@@ -22,7 +22,12 @@ public class DeliveryQuote {
 
     private String originAddress;
     private String destinationAddress;
+    // Explicit precision/scale — an unannotated BigDecimal column defaults to scale 2 in
+    // Hibernate, rounding GPS coordinates to ~1km precision (see StoreSettings for the bug this
+    // caused in practice).
+    @Column(precision = 11, scale = 8)
     private BigDecimal latitude;
+    @Column(precision = 11, scale = 8)
     private BigDecimal longitude;
     private BigDecimal feeTotal;
     private String serviceType;
