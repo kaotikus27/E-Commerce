@@ -203,14 +203,14 @@ public class LalamoveClient {
         } catch (RestClientResponseException e) {
             String rawBody = e.getResponseBodyAsString();
             System.err.println("[Lalamove] " + method + " " + path + " -> " + e.getStatusCode() + ": " + rawBody);
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, friendlyMessage(rawBody), e);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, friendlyMessage(e.getStatusCode(), rawBody), e);
         } catch (Exception e) {
             System.err.println("[Lalamove] " + method + " " + path + " -> " + e.getMessage());
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Could not reach Lalamove right now — please try again.", e);
         }
     }
 
-    private String friendlyMessage(String rawBody) {
+    private String friendlyMessage(org.springframework.http.HttpStatusCode status, String rawBody) {
         try {
             JsonNode errors = objectMapper.readTree(rawBody).path("errors");
             String errorId = errors.path(0).path("id").asText(null);
@@ -218,7 +218,30 @@ public class LalamoveClient {
                 return FRIENDLY_ERROR_MESSAGES.get(errorId);
             }
         } catch (Exception ignored) {
-            // Not the JSON shape we expect — fall through to the generic message below.
+            // Not the JSON shape we expect — fall through to the status-based message below.
+        }
+        return fallbackForStatus(status);
+    }
+
+    /** The per-errorId messages above only cover error ids we've actually seen. Any other
+     *  rejection still deserves more than one opaque string for every case — the HTTP status
+     *  at least tells an admin whether this was a credentials problem, a bad request, an
+     *  account/balance problem, or Lalamove's own outage, without needing server console access
+     *  to figure out why "Call Lalamove Rider" just failed. The raw body is still logged above
+     *  for the exact detail. */
+    private String fallbackForStatus(org.springframework.http.HttpStatusCode status) {
+        int code = status.value();
+        if (code == 401 || code == 403) {
+            return "Lalamove rejected our API credentials — check the Lalamove API key/secret configuration.";
+        }
+        if (code == 402) {
+            return "Lalamove couldn't process this request — the account balance may be too low. Check the Lalamove dashboard.";
+        }
+        if (code == 400 || code == 422) {
+            return "Lalamove rejected this delivery request as invalid — check the pickup/drop-off address and details.";
+        }
+        if (code >= 500) {
+            return "Lalamove's service is having issues right now — please try again shortly.";
         }
         return "Could not get a delivery quote right now — please try again.";
     }

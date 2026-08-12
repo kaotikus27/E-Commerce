@@ -36,8 +36,13 @@ public class StoreSettingsSeeder implements CommandLineRunner {
                 .schedule(new java.util.ArrayList<>(schedule))
                 .orderLeadTimeMinutes(15)
                 .stopOrderingBeforeCloseMinutes(0)
-                // Geocoded via Google's Geocoding API against the real address — an admin can
-                // update this later from Store Settings, which re-geocodes automatically.
+                // Coordinates confirmed against the store's own Google Maps place link
+                // (google.com/maps/place/Home+Cafe+by+Bami/@14.798018,121.0140762,13z/...!3d14.8690823!4d121.0430113...).
+                // storeAddress stays a full postal address (not just the place name) — this field
+                // is shown to customers verbatim (footer, location banner, order-status page) and
+                // sent to Lalamove as the pickup address text, so a bare business name loses the
+                // street-level detail riders and customers actually need. An admin can update this
+                // later from Store Settings, which re-geocodes automatically.
                 .storeAddress("048 Kay Piskal Rd, Tigbe, Norzagaray, 3013 Bulacan, Philippines")
                 .storeLatitude(new BigDecimal("14.8690823"))
                 .storeLongitude(new BigDecimal("121.0430113"))

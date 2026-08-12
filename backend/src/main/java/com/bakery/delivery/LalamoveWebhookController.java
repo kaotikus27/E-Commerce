@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -40,6 +41,16 @@ public class LalamoveWebhookController {
 
     @Value("${lalamove.api-secret}")
     private String apiSecret;
+
+    /** Lalamove's own webhook-registration flow (PATCH /v3/webhook) probes the URL with a
+     *  non-POST request before accepting it — confirmed live: registration failed with
+     *  "ERR_INVALID_RESPONSE / Non-200 response received" while this endpoint only mapped POST,
+     *  which Spring answers with a 500 for any other verb. This handler exists purely so that
+     *  reachability probe sees a 200; it carries no event data and updates nothing. */
+    @GetMapping("/webhook")
+    public String webhookReachabilityCheck() {
+        return "OK";
+    }
 
     @PostMapping("/webhook")
     public String receiveWebhook(@RequestBody String rawPayload, HttpServletRequest request) {

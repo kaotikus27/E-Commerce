@@ -52,7 +52,10 @@ const ORIGINAL_TITLE = 'Home by Bami — Admin';
                   {{ dispatching().has(order.id) ? 'Calling Rider…' : '🛵 Call Lalamove Rider' }}
                 </button>
               }
-              <button class="btn btn-primary btn-sm" (click)="advance(order, 'READY')">Mark Ready</button>
+              @if (order.fulfillmentType === 'DELIVERY' && !canMarkReady(order)) {
+                <div class="ready-hint">Waiting for a Lalamove driver to be assigned before this can be marked ready.</div>
+              }
+              <button class="btn btn-primary btn-sm" [disabled]="!canMarkReady(order)" (click)="advance(order, 'READY')">Mark Ready</button>
             </div>
           </div>
         } @empty {
@@ -195,6 +198,7 @@ const ORIGINAL_TITLE = 'Home by Bami — Admin';
     .items { list-style: none; padding: 0; margin: 0 0 10px; font-size: 13px; }
     .notes { font-size: 12px; background: var(--color-subdued-pistachio); border-radius: var(--radius-sm); padding: 6px 8px; margin-bottom: 10px; }
     .actions { display: flex; flex-direction: column; gap: 8px; }
+    .ready-hint { font-size: 12px; color: var(--color-status-pending); }
     .empty { color: var(--color-text-muted); font-size: 13px; }
   `],
 })
@@ -269,6 +273,17 @@ export class AdminOrdersBoardComponent implements OnInit, OnDestroy {
     if (this.timer) clearInterval(this.timer);
     if (this.titleTimer) clearTimeout(this.titleTimer);
     document.title = ORIGINAL_TITLE;
+  }
+
+  /** Pickup orders can always be marked ready. Delivery orders need a rider actually assigned
+   *  first — Lalamove has no distinct "ASSIGNED" order status (their real states are
+   *  ASSIGNING_DRIVER → ON_GOING → PICKED_UP → COMPLETED, per their webhook docs); a driver
+   *  being assigned is signaled by the separate DRIVER_ASSIGNED webhook populating driverName
+   *  while the order can still show ASSIGNING_DRIVER overall, or by deliveryStatus already
+   *  having advanced to ON_GOING/PICKED_UP. Either is treated as "a rider is coming." */
+  canMarkReady(order: AdminOrder): boolean {
+    if (order.fulfillmentType !== 'DELIVERY') return true;
+    return !!order.driverName || order.deliveryStatus === 'ON_GOING' || order.deliveryStatus === 'PICKED_UP';
   }
 
   advance(order: AdminOrder, status: 'PREPARING' | 'READY' | 'COMPLETED') {
