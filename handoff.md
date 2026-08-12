@@ -1,0 +1,61 @@
+---
+title: "Home by Bami E-Commerce — Handoff"
+type: handoff
+status: active
+owner: "Leo"
+created: 2026-08-11
+updated: 2026-08-11
+ai_access: internal
+ai_generated: true
+review_status: draft
+canonical: true
+---
+
+# Current Objective
+
+~~Manually verify the checkout delivery flow end-to-end~~ **Done this session** — verified with `claude-in-chrome` browser automation (user's explicit call, given the prior stale-DOM history), cross-checked against actual network responses rather than trusting rendered DOM alone. Next: re-enter store phone/GCash info in Admin → Store Settings (address is now fixed via seeder default, see DEC-004).
+
+# Current Status
+
+Backend confirmed via direct API calls (prior session): geocoding, address disambiguation, Lalamove quotation/dispatch all working end-to-end. Frontend/UI checkout-delivery flow now also confirmed this session, running locally (backend :8080, frontend :4200):
+- Add item → Checkout → Delivery → address search → `POST /api/v1/delivery/quote` → 200, fee ₱95.00, resolved address + map rendered (Leaflet/OSM).
+- Drag pin → "Confirm new location" → fresh `POST /api/v1/delivery/quote` → 200, fee updated to ₱98.00, map re-centered.
+- Header/store name correctly shows "Home Cafe by Bami", confirming the DEC-004 seeder fix is live.
+
+# Decisions Made
+
+See `DECISIONS.md` for the full log. Most recent: use a per-machine local JVM trust store file (via `MAVEN_OPTS`) instead of touching the system trust store, to work behind a TLS-inspecting corporate proxy.
+
+# Files Changed (most recent session)
+
+- `backend/mvnw` — executable bit fix, committed and pushed as `4692a83`. Everything else in the last session was environment/config setup, not code.
+
+# Open Issues
+
+1. ~~Store address precision was reduced.~~ **Fixed.** `StoreSettingsSeeder.java` default coordinates are `14.8690823, 121.0430113`, matching the store's own Google Maps place link pin. `storeAddress` is the full postal address `"048 Kay Piskal Rd, Tigbe, Norzagaray, 3013 Bulacan, Philippines"` (matches `contact-page.component.ts`). Note: an earlier version of this fix set `storeAddress` to the bare place name `"Home Cafe by Bami"` — a code-review pass caught this as a regression (that field is shown to customers and sent to Lalamove as the pickup address, so a bare name loses needed street detail) — corrected same session. **Not yet re-verified live** — the running dev instance still has the bare-name value in memory (H2, existsById skips reseed); needs a backend restart to pick up the corrected seed.
+2. **H2 in-memory DB wipes Store Settings on every backend restart** (hours, address override, phone, GCash info) — recurring across at least two sessions and two machines. Seed defaults also mark Monday as closed all day, which has caused confusion twice. Recommend switching `application.yml` to `jdbc:h2:file:./data/bakerydb` or a real DB. Store phone/GCash info still needs entry via Admin → Store Settings — will not survive a restart until this is resolved.
+3. **Admin → Store Settings page silently fails to render** after certain navigation paths — URL and nav shell are correct, but the settings form never appears and the underlying API call never even fires. Reproducible, not yet root-caused.
+4. **`app.ocr.tessdata-path` in `application.yml` is hardcoded to a Windows path** (`C:/Users/Public.DESKTOP-3A1LBHM/...`) — will break GCash receipt OCR on macOS if that feature is exercised there.
+5. ~~Treat any "verified in browser" claim from automated browser tooling with suspicion~~ — this session's `claude-in-chrome` verification cross-checked actual `POST /api/v1/delivery/quote` network responses (not just rendered DOM) specifically to guard against the prior stale-DOM failure mode. Still prefer manual/network-verified checks over trusting rendered DOM alone for this flow. **New this session:** `claude-in-chrome` also became unreliable mid-session in a different way — screenshot capture timed out repeatedly (CDP `Page.captureScreenshot`) and clicks on radio buttons intermittently failed to register (e.g. the checkout Delivery radio silently not toggling) after a manual `resize_window` call. Root cause not confirmed (possibly a devicePixelRatio/viewport mismatch introduced by resizing), but treat single-click UI state changes as unconfirmed until verified by a follow-up screenshot or network call, not just "click succeeded."
+6. ~~"Call Lalamove Rider" (admin dispatch, order status Preparing) fails with the generic message "Could not get a delivery quote right now — please try again."~~ **Root-caused, fixed, and confirmed live.** Live reproduction (user pasted the backend's `[Lalamove]` stderr log, which was already being written server-side before this session) showed the real failure: `POST /v3/orders -> 422 ERR_INVALID_FIELD: '09605168262' is not valid 'phone'. Phone must be in e.164 format...`. This confirms the bug report's Root Cause #1 (payload validation), specifically the recipient phone — customers type their phone at checkout in ordinary PH local format (`09XXXXXXXXX`), which is stored/displayed that way everywhere, but Lalamove's `recipient.phone` strictly requires E.164 (`+639XXXXXXXXX`) and nothing normalized it before the `/v3/orders` call. **Fixed** in `DeliveryDispatchService.java`: added `toE164Philippines()`, which normalizes common PH input shapes to E.164 (returns null — dispatch now fails fast with a clear message — if the result isn't a plausible PH mobile number) and applies it only to the outbound Lalamove call; the stored `guestPhone` is untouched. Also fixed along the way: `LalamoveClient.friendlyMessage()` previously swallowed any Lalamove error id it didn't recognize into one generic string (bug report's Root Cause #4) — now falls back to a status-specific message (401/403 → credentials, 402 → balance, 400/422 → invalid request, 5xx → outage) when the specific id isn't mapped. **Confirmed live** after the user restarted the backend: re-tested end-to-end via direct API calls (store phone re-set to `+639171234567` — H2 had cleared it on restart, as expected per Open Issue 2 — got a real quote, placed test order `ORD-336213` with `guestPhone: "09605168262"`, the exact number from the original report, moved it to `PREPARING`, then dispatched). Result: `HTTP 200`, `deliveryStatus: ASSIGNING_DRIVER`, real Lalamove sandbox `trackingShareLink` returned. Test order lives only in in-memory H2 and disappears on next restart — no cleanup needed.
+
+7. ~~"Mark Ready" is clickable before a Lalamove driver is assigned~~ **Fixed.** User reported orders stuck in `ASSIGNING_DRIVER` with no gate preventing "Mark Ready" before a driver is actually assigned, and proposed forcing driver assignment via a Lalamove sandbox "simulator" REST endpoint. Checked Lalamove's own API docs (`developers.lalamove.com`): **there is no `ASSIGNED` order status and no sandbox simulator endpoint to force driver assignment** — Lalamove's real order-status progression is `ASSIGNING_DRIVER → ON_GOING (driver accepted) → PICKED_UP → COMPLETED`, and "a driver is assigned" is signaled by a separate `DRIVER_ASSIGNED` webhook event populating driver name/phone/plate while the order can still show `ASSIGNING_DRIVER` overall — which `LalamoveWebhookController.java` already correctly implements. The real, valid gap was in `admin-orders-board.component.ts`: "Mark Ready" had **zero gating** — clickable regardless of delivery/driver status. **Fixed:** added `canMarkReady()` — pickup orders unaffected; delivery orders now require `driverName` set (from `DRIVER_ASSIGNED`) or `deliveryStatus` already `ON_GOING`/`PICKED_UP` before the button enables, with a hint shown while disabled. **Confirmed live this session** (see Open Issue 8) — the simulated webhook events flipped `driverName`/`deliveryStatus` exactly as this gate depends on.
+8. **NEW — built and verified `backend/scripts/simulate-lalamove-webhook.js`**, a signed local webhook simulator (per Open Issue 7's `DRIVER_ASSIGNED`/`ORDER_STATUS_CHANGED` events), so driver assignment can be tested without waiting on Lalamove's sandbox to auto-match a driver. Building it surfaced and fixed a real signing bug in my own test harness (Git Bash mangles a leading-slash CLI arg like `/api/v1/lalamove/webhook` into a Windows path — worked around with `MSYS2_ARG_CONV_EXCL`, irrelevant to the actual Node script since its webhook path is a hardcoded JS constant, never a shell arg). Cross-verified the script's HMAC signature byte-for-byte against the real `LalamoveHmacSigner` Java class before trusting it live. **Fully confirmed against the real running backend and a real dispatched order** (`ORD-336213`, sandbox `lalamoveOrderId 3559074781054214793` — found via H2 console, since **`lalamoveOrderId` isn't exposed by any admin API/UI today**, added to `backlog.md`): ran `node scripts/simulate-lalamove-webhook.js 3559074781054214793 --full`, confirmed via `GET /api/v1/orders/ORD-336213` that `deliveryStatus` moved `ASSIGNING_DRIVER → ON_GOING` and `driverName`/`driverPhone`/`driverPlateNumber` populated — a real, signed webhook event accepted and applied by the backend, not just an HTTP 200 (the endpoint always returns 200 regardless of signature validity, so the order-state check was the actual proof). Usage and the H2-console lookup steps for `lalamoveOrderId` are documented in the script's header comment.
+9. **NEW — added `--lifecycle` mode to `simulate-lalamove-webhook.js`** and ran the full realistic sequence the user manually walked through (assign → reject → reassign → pick up → complete) end-to-end. Sequence: `DRIVER_ASSIGNED` (driver A) → `DRIVER_ASSIGNED` (driver B, models "driver A rejected, B accepted" — Lalamove's docs don't expose a distinct "driver rejected" event, only `ORDER_STATUS_CHANGED`/`DRIVER_ASSIGNED`, so a rejection-then-reassignment is only ever visible as a second `DRIVER_ASSIGNED`) → `ORDER_STATUS_CHANGED ON_GOING` → `PICKED_UP` → `COMPLETED`. **Ran against a real user-placed order** (`ORD-182313`, not a synthetic test order) and confirmed via `GET /api/v1/orders/ORD-182313` after every single step — full state progression captured: `ASSIGNING_DRIVER/null` → `ASSIGNING_DRIVER/Juan Dela Cruz` → `ASSIGNING_DRIVER/Maria Santos` → `ON_GOING/Maria Santos` → `PICKED_UP/Maria Santos` → `COMPLETED/Maria Santos`. `ORD-833080` (the user's other real test order) was left untouched.
+10. **Diagnosed why manually changing status via the Lalamove Partner Portal / sandbox tools didn't update the local live-orders board**: nothing in this codebase registers a webhook callback URL with Lalamove, and the backend runs on `localhost:8080` — Lalamove's cloud servers cannot reach it directly. Unless a public tunnel (ngrok, Cloudflare Tunnel, etc.) is set up and that URL is registered as the webhook endpoint in the Lalamove sandbox dashboard, portal-side status changes never reach `/api/v1/lalamove/webhook` and the local DB genuinely never updates — this is expected/by-design given the current setup, not a code bug. `simulate-lalamove-webhook.js` sidesteps this entirely by hitting the local endpoint directly.
+
+# Next Action
+
+1. Re-enter store phone/GCash info in Admin → Store Settings (Open Issue 3: settings page currently fails to render — root-cause that first). Then decide on Open Issue 2 (H2 persistence) so this stops needing re-entry every restart.
+2. Consider surfacing `lalamoveOrderId` on the admin order view (see `backlog.md`) so `simulate-lalamove-webhook.js` doesn't require an H2-console lookup.
+3. If real (not simulated) end-to-end webhook testing is wanted, set up a public tunnel (ngrok/Cloudflare Tunnel) to the local backend and register that URL in the Lalamove sandbox dashboard (Open Issue 10) — otherwise continue relying on `simulate-lalamove-webhook.js`.
+
+# Risks
+
+Any data entered into Admin → Store Settings will be lost on the next backend restart until H2 is made persistent (Open Issue 2).
+
+# Validation Status
+
+Backend delivery flow: confirmed via direct curl, end to end (prior session). Frontend/UI checkout-delivery flow: confirmed this session (browser automation, network-response-verified) — see Current Status.
+
+Replace and refresh this file each session. A full snapshot of the session this was distilled from is archived at `docs/history/handoffs/2026-08-11-mac-part4-handoff.md`.
