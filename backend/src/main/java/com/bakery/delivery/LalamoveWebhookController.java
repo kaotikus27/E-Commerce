@@ -107,7 +107,7 @@ public class LalamoveWebhookController {
         if (lalamoveOrderId == null) return;
 
         if ("ORDER_STATUS_CHANGED".equals(eventType)) {
-            DeliveryStatus status = parseStatus(orderNode.path("status").asText(null));
+            DeliveryStatus status = DeliveryStatus.fromLalamove(orderNode.path("status").asText(null));
             String shareLink = orderNode.path("shareLink").asText(null);
             orderService.applyDeliveryWebhookUpdate(lalamoveOrderId, status, null, null, null, shareLink);
         } else if ("DRIVER_ASSIGNED".equals(eventType)) {
@@ -116,15 +116,6 @@ public class LalamoveWebhookController {
             String driverPhone = driver.path("phone").asText(null);
             String driverPlateNumber = driver.path("plateNumber").asText(null);
             orderService.applyDeliveryWebhookUpdate(lalamoveOrderId, null, driverName, driverPhone, driverPlateNumber, null);
-        }
-    }
-
-    private DeliveryStatus parseStatus(String lalamoveStatus) {
-        if (lalamoveStatus == null) return null;
-        try {
-            return DeliveryStatus.valueOf(lalamoveStatus);
-        } catch (IllegalArgumentException e) {
-            return null;
         }
     }
 }

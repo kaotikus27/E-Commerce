@@ -48,4 +48,9 @@ public class AdminOrderController {
     public OrderResponseDto dispatchDelivery(@PathVariable String orderNumber) {
         return orderService.dispatchDelivery(orderNumber);
     }
+
+    @PatchMapping("/{orderNumber}/sync-delivery-status")
+    public OrderResponseDto syncDeliveryStatus(@PathVariable String orderNumber) {
+        return orderService.syncDeliveryStatus(orderNumber);
+    }
 }

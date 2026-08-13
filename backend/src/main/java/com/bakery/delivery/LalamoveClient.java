@@ -153,6 +153,30 @@ public class LalamoveClient {
         return new LalamoveOrder(lalamoveOrderId, status, shareLink);
     }
 
+    /** GET /v3/orders/{orderId} — used by the manual "Refresh Delivery Status" sync path as a
+     *  fallback for when the webhook never arrives (e.g. no public tunnel reaches this machine in
+     *  dev). Lalamove's response only includes driverId, not the driver's name/phone/plate — see
+     *  getDriver() for that. */
+    public LalamoveOrderStatus getOrder(String lalamoveOrderId) {
+        requireConfigured();
+        JsonNode responseData = parseJson(signedRequest("GET", "/v3/orders/" + lalamoveOrderId, "")).path("data");
+        String status = responseData.path("status").asText(null);
+        String shareLink = responseData.path("shareLink").asText(null);
+        String driverId = responseData.path("driverId").asText(null);
+        return new LalamoveOrderStatus(status, shareLink, driverId);
+    }
+
+    /** GET /v3/orders/{orderId}/drivers/{driverId} — the driver's name/phone/plate live here, not
+     *  on the order resource itself. */
+    public LalamoveDriver getDriver(String lalamoveOrderId, String driverId) {
+        requireConfigured();
+        JsonNode responseData = parseJson(signedRequest("GET", "/v3/orders/" + lalamoveOrderId + "/drivers/" + driverId, "")).path("data");
+        String name = responseData.path("name").asText(null);
+        String phone = responseData.path("phone").asText(null);
+        String plateNumber = responseData.path("plateNumber").asText(null);
+        return new LalamoveDriver(name, phone, plateNumber);
+    }
+
     private ObjectNode stopNode(BigDecimal lat, BigDecimal lng, String address) {
         ObjectNode stop = objectMapper.createObjectNode();
         ObjectNode coordinates = stop.putObject("coordinates");

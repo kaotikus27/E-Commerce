@@ -5,6 +5,9 @@ import com.bakery.catalog.ProductRepository;
 import com.bakery.delivery.DeliveryDispatchService;
 import com.bakery.delivery.DeliveryQuote;
 import com.bakery.delivery.DeliveryQuoteService;
+import com.bakery.delivery.LalamoveClient;
+import com.bakery.delivery.LalamoveDriver;
+import com.bakery.delivery.LalamoveOrderStatus;
 import com.bakery.store.StoreSettingsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -42,6 +45,7 @@ public class OrderService {
     private final GCashOcrService gcashOcrService;
     private final DeliveryQuoteService deliveryQuoteService;
     private final DeliveryDispatchService deliveryDispatchService;
+    private final LalamoveClient lalamoveClient;
 
     @Transactional
     public OrderResponseDto placeOrder(OrderRequestDto request, MultipartFile receiptImage) {
@@ -179,15 +183,91 @@ public class OrderService {
         return OrderResponseDto.from(orderRepository.save(order));
     }
 
-    /** Applies a Lalamove webhook event to whichever order matches lalamoveOrderId — silently a
-     *  no-op if no match (unknown/stale/duplicate event), since a webhook receiver should never
-     *  500 back to the sender over something it can't do anything about. */
+    /** Manual fallback for when Lalamove's webhook never arrives (e.g. no public tunnel reaches
+     *  this machine in dev, or a real delivery event over the internet). Pulls the current status
+     *  straight from Lalamove instead of waiting on a push, then funnels it through the exact same
+     *  guarded applyDeliveryWebhookUpdate() path the webhook uses — so an out-of-order or stale
+     *  pull can't regress an order any more than a stale webhook event could. Driver name/phone/
+     *  plate are only backfilled once (when we don't have them yet) — reassignment mid-flight is
+     *  expected to still arrive via the webhook when reachable, not repeatedly re-pulled here. */
+    @Transactional
+    public OrderResponseDto syncDeliveryStatus(String orderNumber) {
+        Order order = orderRepository.findByOrderNumber(orderNumber)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order " + orderNumber + " not found"));
+        String lalamoveOrderId = order.getLalamoveOrderId();
+        if (lalamoveOrderId == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This order hasn't been dispatched to Lalamove yet.");
+        }
+
+        LalamoveOrderStatus lalamoveOrder = lalamoveClient.getOrder(lalamoveOrderId);
+        DeliveryStatus status = DeliveryStatus.fromLalamove(lalamoveOrder.status());
+
+        String driverName = null;
+        String driverPhone = null;
+        String driverPlateNumber = null;
+        if (lalamoveOrder.driverId() != null && order.getDriverName() == null) {
+            LalamoveDriver driver = lalamoveClient.getDriver(lalamoveOrderId, lalamoveOrder.driverId());
+            driverName = driver.name();
+            driverPhone = driver.phone();
+            driverPlateNumber = driver.plateNumber();
+        }
+
+        applyDeliveryWebhookUpdate(lalamoveOrderId, status, driverName, driverPhone, driverPlateNumber, lalamoveOrder.shareLink());
+
+        return OrderResponseDto.from(orderRepository.findByOrderNumber(orderNumber)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order " + orderNumber + " not found")));
+    }
+
+    /** Linear happy-path progression for DeliveryStatus — REJECTED/CANCELED are deliberately
+     *  excluded, they're terminal exits reachable from any point, not a rank in this sequence. */
+    private static final List<DeliveryStatus> DELIVERY_PROGRESSION = List.of(
+            DeliveryStatus.NOT_DISPATCHED, DeliveryStatus.ASSIGNING_DRIVER,
+            DeliveryStatus.ON_GOING, DeliveryStatus.PICKED_UP, DeliveryStatus.COMPLETED);
+
+    private static boolean isTerminalDeliveryStatus(DeliveryStatus status) {
+        return status == DeliveryStatus.COMPLETED || status == DeliveryStatus.REJECTED || status == DeliveryStatus.CANCELED;
+    }
+
+    /** Two independent paths can write deliveryStatus (webhook push, manual/poll pull) with no
+     *  guarantee either arrives in chronological order — a stale response landing after a newer
+     *  one would otherwise silently regress the order. REJECTED/CANCELED always win since they're
+     *  terminal exits, not a further step in the happy-path sequence. */
+    private static boolean shouldApplyDeliveryStatus(DeliveryStatus current, DeliveryStatus incoming) {
+        if (incoming == null) return false;
+        if (current == null) return true;
+        if (incoming == DeliveryStatus.REJECTED || incoming == DeliveryStatus.CANCELED) return true;
+        int currentRank = DELIVERY_PROGRESSION.indexOf(current);
+        int incomingRank = DELIVERY_PROGRESSION.indexOf(incoming);
+        if (currentRank < 0 || incomingRank < 0) return true;
+        return incomingRank >= currentRank;
+    }
+
+    /** Applies a Lalamove delivery update (from either the webhook push or a manual/poll pull) to
+     *  whichever order matches lalamoveOrderId — silently a no-op if no match (unknown/stale/
+     *  duplicate event), since a webhook receiver should never 500 back to the sender over
+     *  something it can't do anything about. Once an order is terminal (COMPLETED/REJECTED/
+     *  CANCELED), every further update is ignored outright — a late-arriving out-of-order event
+     *  (driver info included) should never reopen or overwrite a finished order. */
     @Transactional
     public void applyDeliveryWebhookUpdate(String lalamoveOrderId, DeliveryStatus newStatus,
                                             String driverName, String driverPhone, String driverPlateNumber,
                                             String shareLink) {
         orderRepository.findByLalamoveOrderId(lalamoveOrderId).ifPresent(order -> {
-            if (newStatus != null) order.setDeliveryStatus(newStatus);
+            DeliveryStatus current = order.getDeliveryStatus();
+            if (isTerminalDeliveryStatus(current) && newStatus != current) {
+                System.err.println("[Lalamove delivery update] Ignoring update for lalamoveOrderId=" + lalamoveOrderId
+                        + " — order already terminal (" + current + "); incoming status " + newStatus);
+                return;
+            }
+
+            if (newStatus != null) {
+                if (shouldApplyDeliveryStatus(current, newStatus)) {
+                    order.setDeliveryStatus(newStatus);
+                } else {
+                    System.err.println("[Lalamove delivery update] Ignoring out-of-order status " + newStatus
+                            + " for lalamoveOrderId=" + lalamoveOrderId + " — current status " + current + " is already further along.");
+                }
+            }
             if (driverName != null) order.setDriverName(driverName);
             if (driverPhone != null) order.setDriverPhone(driverPhone);
             if (driverPlateNumber != null) order.setDriverPlateNumber(driverPlateNumber);
