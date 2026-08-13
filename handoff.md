@@ -63,16 +63,14 @@ Prior session: `backend/mvnw` — executable bit fix, committed and pushed as `4
 
 # Next Action
 
-1. Commit the DEC-006 changes (backend + frontend delivery-status sync) — currently uncommitted.
-2. Decide whether `ORD-179842` needs a manual DB fix — it's `CANCELED` locally but `PICKED_UP` in Lalamove's real sandbox record, a side effect of testing the new terminal-lock guard.
-3. On the Mac machine: set `TESSDATA_PATH` env var to its local Homebrew tessdata path, and re-attempt reproducing Open Issue 3 (Settings page render bug) — it may reproduce there, or may already be resolved.
-4. Once Open Issue 3 is resolved (or ruled out), re-enter store phone/GCash info in Admin → Store Settings — it will now actually persist across restarts (Open Issue 2 fixed).
-5. Consider surfacing `lalamoveOrderId` on the admin order view (see `backlog.md`) so `simulate-lalamove-webhook.js` and the new sync endpoint don't require an H2-console lookup to test against a specific order.
-6. If real (not simulated) end-to-end webhook testing is wanted, set up a public tunnel (ngrok/Cloudflare Tunnel) to the local backend and register that URL in the Lalamove sandbox dashboard (Open Issue 10) — the new manual sync (DEC-006) is a fallback, not a replacement for this.
+1. On the Mac machine: set `TESSDATA_PATH` env var to its local Homebrew tessdata path, and re-attempt reproducing Open Issue 3 (Settings page render bug) — it may reproduce there, or may already be resolved.
+2. Once Open Issue 3 is resolved (or ruled out), re-enter store phone/GCash info in Admin → Store Settings — it will now actually persist across restarts (Open Issue 2 fixed).
+3. Consider surfacing `lalamoveOrderId` on the admin order view (see `backlog.md`) so `simulate-lalamove-webhook.js` and the new sync endpoint don't require an H2-console lookup to test against a specific order.
+4. If real (not simulated) end-to-end webhook testing is wanted, set up a public tunnel (ngrok/Cloudflare Tunnel) to the local backend and register that URL in the Lalamove sandbox dashboard (Open Issue 10) — the new manual sync (DEC-006) is a fallback, not a replacement for this.
 
 # Risks
 
-None currently blocking — Store Settings data loss on restart (previously the top risk) is resolved. Minor: `ORD-179842`'s local status now disagrees with Lalamove's real sandbox record (see Next Action #3).
+None currently blocking — Store Settings data loss on restart (previously the top risk) is resolved. `ORD-179842`'s DB/Lalamove mismatch from testing the terminal guard was corrected via a direct H2 console fix.
 
 # Validation Status
 

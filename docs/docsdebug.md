@@ -180,9 +180,14 @@ see review notes below.
 5. Sent `ON_GOING` again → correctly ignored (order now terminal) → stayed `CANCELED`.
 
 **Known side effect of testing:** step 4/5 above left `ORD-179842` as `CANCELED` in the local DB,
-which no longer matches Lalamove's real sandbox record (`PICKED_UP`) — a deliberate test action,
-not a bug, but the new terminal guard now correctly refuses to let anything resync it. Needs a
-manual DB fix if that specific test order should reflect `PICKED_UP` again.
+which no longer matched Lalamove's real sandbox record (`PICKED_UP`) — a deliberate test action,
+not a bug, but the new terminal guard correctly refused to let anything resync it automatically.
+**Fixed (2026-08-13, later same session):** corrected directly via the H2 console (`UPDATE orders
+SET delivery_status='PICKED_UP' WHERE order_number='ORD-179842'`) — the app-level guard is
+supposed to block exactly this kind of update through its normal paths, so a raw DB fix was the
+only way to correct a test artifact without weakening the guard itself. Verified via both the H2
+console read-back and `GET /api/v1/orders/ORD-179842` — `deliveryStatus` and `driverName` both
+confirmed correct.
 
 **Reviewed but deliberately not built this session** (see the PROPOSAL.md review in chat):
 - The proposal's Cloudflare-tunnel example (`cloudflared tunnel --url ...`) is the *ephemeral*
