@@ -13,6 +13,5 @@ Open, not-yet-scheduled work. Carried forward across sessions — check off and 
 - [ ] Satellite-view toggle (carried over from an earlier session, still untouched).
 - [ ] Build Rail roadmap artifact update (carried over from an earlier session, still untouched).
 - [ ] `lalamoveOrderId` isn't exposed by any admin API/UI — the only way to look it up today is a raw H2-console SQL query (see `backend/scripts/simulate-lalamove-webhook.js` header for the exact steps). Worth surfacing on the admin order view.
-- [ ] Frontend: no "Refresh Delivery Status" button wired to the new `PATCH /api/v1/admin/orders/{orderNumber}/sync-delivery-status` endpoint (DEC-006) — backend-only so far, verified via curl.
 - [ ] No cron/background auto-poll for orders stuck in `ASSIGNING_DRIVER` beyond N minutes — DEC-006 only covers manual/on-demand sync.
 - [ ] `ORD-179842` is `CANCELED` in the local DB but `PICKED_UP` in Lalamove's real sandbox record — left over from testing DEC-006's terminal-lock guard; needs a manual DB fix if it matters (the guard now correctly refuses to auto-correct it).

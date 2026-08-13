@@ -104,6 +104,11 @@ const ORIGINAL_TITLE = 'Home by Bami — Admin';
             @if (order.trackingShareLink) {
               <a [href]="order.trackingShareLink" target="_blank" rel="noopener" class="tracking-link">📍 Track Rider Live</a>
             }
+            @if (isDeliveryInProgress(order)) {
+              <button class="btn btn-secondary btn-sm sync-delivery-btn" [disabled]="syncing().has(order.id)" (click)="syncDeliveryStatus(order)">
+                {{ syncing().has(order.id) ? 'Syncing…' : '🔄 Refresh Delivery Status' }}
+              </button>
+            }
           }
         </div>
       }
@@ -179,6 +184,7 @@ const ORIGINAL_TITLE = 'Home by Bami — Admin';
     .delivery-status-badge { margin-top: 6px; font-weight: 700; color: var(--color-sage-700); }
     .driver-info { margin-top: 2px; font-size: 12px; }
     .tracking-link { display: inline-block; margin-top: 4px; font-size: 12px; font-weight: 700; color: var(--color-sage-700); text-decoration: underline; }
+    .sync-delivery-btn { display: block; margin-top: 6px; }
     .payment-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
     .payment { font-size: 12px; color: var(--color-text-muted); }
     .pay-status { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: var(--radius-pill); background: var(--color-subdued-pistachio); color: var(--color-status-closed); }
@@ -220,6 +226,9 @@ export class AdminOrdersBoardComponent implements OnInit, OnDestroy {
 
   /** Order ids currently mid-dispatch — disables the "Call Rider" button to prevent double-clicks. */
   dispatching = signal<Set<string>>(new Set());
+
+  /** Order ids currently mid-sync — disables the "Refresh Delivery Status" button to prevent double-clicks. */
+  syncing = signal<Set<string>>(new Set());
 
   private knownReceivedIds = new Set<string>();
   private seededRefIds = new Set<string>();
@@ -316,6 +325,27 @@ export class AdminOrdersBoardComponent implements OnInit, OnDestroy {
         return next;
       });
       if (updated) this.notifications.success(`Order #${order.id} dispatched to Lalamove.`);
+    });
+  }
+
+  /** Only worth offering once dispatched and not yet finished — a terminal delivery status
+   *  (COMPLETED/REJECTED/CANCELED) is locked server-side and a sync would be a guaranteed no-op. */
+  isDeliveryInProgress(order: AdminOrder): boolean {
+    return order.deliveryStatus !== 'NOT_DISPATCHED'
+      && order.deliveryStatus !== 'COMPLETED'
+      && order.deliveryStatus !== 'REJECTED'
+      && order.deliveryStatus !== 'CANCELED';
+  }
+
+  syncDeliveryStatus(order: AdminOrder) {
+    this.syncing.update(set => new Set(set).add(order.id));
+    this.orderService.syncDeliveryStatus(order.id).subscribe(updated => {
+      this.syncing.update(set => {
+        const next = new Set(set);
+        next.delete(order.id);
+        return next;
+      });
+      if (updated) this.notifications.success(`Order #${order.id} delivery status refreshed.`);
     });
   }
 

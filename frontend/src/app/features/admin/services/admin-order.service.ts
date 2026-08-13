@@ -125,6 +125,21 @@ export class AdminOrderService {
     );
   }
 
+  /** Admin clicks "Refresh Delivery Status" — pulls current status/driver directly from Lalamove
+   *  instead of waiting on a webhook that may never arrive (e.g. no public tunnel reaches this
+   *  backend in dev). Fallback path, not a replacement for the webhook. */
+  syncDeliveryStatus(orderNumber: string) {
+    return this.api.patch<AdminOrder>(`/admin/orders/${orderNumber}/sync-delivery-status`, {}).pipe(
+      tap(updated => {
+        this.orders.update(list => list.map(o => (o.id === updated.id ? updated : o)));
+      }),
+      catchError((err: HttpErrorResponse) => {
+        this.notifications.error(err.error?.message || 'Could not sync the delivery status.');
+        return of(null);
+      })
+    );
+  }
+
   /** Client-side search over the archived (completed/cancelled) list by name, order #, or phone. */
   searchHistory(query: string): AdminOrder[] {
     const q = query.trim().toLowerCase();

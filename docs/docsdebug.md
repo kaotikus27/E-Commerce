@@ -90,9 +90,9 @@ The Spring Boot backend does not process or persist the status update from the L
 
 ### ✅ Investigation Findings (2026-08-13)
 
-- **Status:** root-caused. Not a new defect — this is the same thing already diagnosed in a prior
-  session as `handoff.md` Open Issue 10, re-triggered because the fix for it (a public tunnel) was
-  never actually set up.
+- **Status:** fixed (see "Fix" and "Frontend wired up" sections below). Not a new defect — this is
+  the same thing already diagnosed in a prior session as `handoff.md` Open Issue 10, re-triggered
+  because the fix for it (a public tunnel) was never actually set up.
 - **Confirmed live:** `GET /api/v1/orders/ORD-179842` right now still shows
   `deliveryStatus: "ASSIGNING_DRIVER"`, `driverName: null` — matches the report exactly. This is a
   real, currently-stuck order, not a one-off.
@@ -190,6 +190,17 @@ manual DB fix if that specific test order should reflect `PICKED_UP` again.
   breaks on restart." A real persistent tunnel needs an owned domain + named tunnel setup. Not
   worth checking into the repo either way — a tunnel URL is inherently per-session.
 - No cron/background auto-poll for stuck orders — manual "Refresh Delivery Status" only, for now.
-- Frontend button to call the new endpoint from the Live Orders board — not wired up yet.
 - Setting up the actual tunnel + registering it in the Lalamove sandbox dashboard, so the real
   Partner-Portal-triggered webhook path works — still an open manual step (Open Issue 10).
+
+**Frontend wired up and verified live in the real browser (2026-08-13, later same session):**
+Added a "🔄 Refresh Delivery Status" button to `admin-orders-board.component.ts` (shown next to
+the delivery-status badge whenever `deliveryStatus` isn't terminal — `isDeliveryInProgress()` —
+so it's correctly absent on already-finished/canceled orders) plus `syncDeliveryStatus()` in
+`AdminOrderService`. Verified end to end in Chrome, not just via curl: logged in, opened Live
+Orders, confirmed the button was present on the in-progress order (`ORD-115748`,
+`ASSIGNING_DRIVER`) and correctly absent on the terminal one (`ORD-179842`, `CANCELED`), clicked
+it, and watched `ORD-115748` update live in the UI — `ASSIGNING_DRIVER → ON_GOING`, real driver
+info populated, and "Mark Ready" flipped from disabled (with its "waiting for driver" hint) to
+enabled, since `canMarkReady()` reads the same `deliveryStatus`/`driverName` fields. No console
+errors. Status: **closed** — both the code path and its UI are now built and verified.
