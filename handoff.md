@@ -13,7 +13,9 @@ canonical: true
 
 # Current Objective
 
-~~Manually verify the checkout delivery flow end-to-end~~ **Done this session** — verified with `claude-in-chrome` browser automation (user's explicit call, given the prior stale-DOM history), cross-checked against actual network responses rather than trusting rendered DOM alone. Next: re-enter store phone/GCash info in Admin → Store Settings (address is now fixed via seeder default, see DEC-004).
+~~Manually verify the checkout delivery flow end-to-end~~ **Done** (prior session) — verified with `claude-in-chrome` browser automation, cross-checked against actual network responses rather than trusting rendered DOM alone.
+
+**This session:** attempted to reproduce Open Issue 3 (Admin → Store Settings silently fails to render) live — could not reproduce it across ~8 different navigation paths (fresh login, every tab-to-tab transition, modal-open-then-nav, rapid clicking, hard reload). Deferred to when the user is on the Mac machine, where it may be more reproducible or may turn out to already be fixed. Then fixed Open Issues 2 and 4 instead (H2 persistence, OCR path) — see below.
 
 # Current Status
 
@@ -28,14 +30,18 @@ See `DECISIONS.md` for the full log. Most recent: use a per-machine local JVM tr
 
 # Files Changed (most recent session)
 
-- `backend/mvnw` — executable bit fix, committed and pushed as `4692a83`. Everything else in the last session was environment/config setup, not code.
+- `backend/src/main/resources/application.yml` — H2 datasource switched from `jdbc:h2:mem:bakerydb` to `jdbc:h2:file:./data/bakerydb`; `app.ocr.tessdata-path` switched to `${TESSDATA_PATH:<old hardcoded Windows path>}`. **Not yet committed.**
+- `.gitignore` — added `backend/data/` (the new H2 file-DB directory).
+- `DECISIONS.md`, `backlog.md`, `memory.md`, `PROJECT-CONTEXT.md` — updated to reflect DEC-003 (H2 persistence) and DEC-005 (OCR path) as implemented.
+
+Prior session: `backend/mvnw` — executable bit fix, committed and pushed as `4692a83`.
 
 # Open Issues
 
 1. ~~Store address precision was reduced.~~ **Fixed.** `StoreSettingsSeeder.java` default coordinates are `14.8690823, 121.0430113`, matching the store's own Google Maps place link pin. `storeAddress` is the full postal address `"048 Kay Piskal Rd, Tigbe, Norzagaray, 3013 Bulacan, Philippines"` (matches `contact-page.component.ts`). Note: an earlier version of this fix set `storeAddress` to the bare place name `"Home Cafe by Bami"` — a code-review pass caught this as a regression (that field is shown to customers and sent to Lalamove as the pickup address, so a bare name loses needed street detail) — corrected same session. **Not yet re-verified live** — the running dev instance still has the bare-name value in memory (H2, existsById skips reseed); needs a backend restart to pick up the corrected seed.
-2. **H2 in-memory DB wipes Store Settings on every backend restart** (hours, address override, phone, GCash info) — recurring across at least two sessions and two machines. Seed defaults also mark Monday as closed all day, which has caused confusion twice. Recommend switching `application.yml` to `jdbc:h2:file:./data/bakerydb` or a real DB. Store phone/GCash info still needs entry via Admin → Store Settings — will not survive a restart until this is resolved.
-3. **Admin → Store Settings page silently fails to render** after certain navigation paths — URL and nav shell are correct, but the settings form never appears and the underlying API call never even fires. Reproducible, not yet root-caused.
-4. **`app.ocr.tessdata-path` in `application.yml` is hardcoded to a Windows path** (`C:/Users/Public.DESKTOP-3A1LBHM/...`) — will break GCash receipt OCR on macOS if that feature is exercised there.
+2. ~~H2 in-memory DB wipes Store Settings on every backend restart~~ **Fixed (DEC-003, 2026-08-13).** Switched `application.yml` to `jdbc:h2:file:./data/bakerydb`. Verified live: set `storePhone` via the admin API, restarted the backend process twice, confirmed the value survived both times. `backend/data/` (the DB file) is git-ignored. Store phone/GCash info can now be entered once via Admin → Store Settings and will stick — still blocked on Open Issue 3 (Settings page render bug) actually letting that form load in some sessions.
+3. **Admin → Store Settings page silently fails to render** after certain navigation paths — URL and nav shell are correct, but the settings form never appears and the underlying API call never even fires. **Attempted repro this session** (see Current Objective) — could not reproduce across ~8 navigation paths on this Windows machine with a clean login. Deferred to the Mac machine. Static code review of the component/service/routes/controller found nothing wrong, so this may be state-dependent (stale auth, a backend-restart race) rather than path-dependent, or may have been an artifact of `claude-in-chrome`'s own flakiness in the original report session (see item 5 below).
+4. ~~`app.ocr.tessdata-path` in `application.yml` is hardcoded to a Windows path~~ **Fixed (DEC-005, 2026-08-13).** Now `${TESSDATA_PATH:C:/Users/Public.DESKTOP-3A1LBHM/...}` — override with a `TESSDATA_PATH` env var on any other machine (e.g. macOS Homebrew's `/opt/homebrew/share/tessdata`). Verified the Windows fallback still starts clean; **not yet verified with an actual macOS tessdata install.**
 5. ~~Treat any "verified in browser" claim from automated browser tooling with suspicion~~ — this session's `claude-in-chrome` verification cross-checked actual `POST /api/v1/delivery/quote` network responses (not just rendered DOM) specifically to guard against the prior stale-DOM failure mode. Still prefer manual/network-verified checks over trusting rendered DOM alone for this flow. **New this session:** `claude-in-chrome` also became unreliable mid-session in a different way — screenshot capture timed out repeatedly (CDP `Page.captureScreenshot`) and clicks on radio buttons intermittently failed to register (e.g. the checkout Delivery radio silently not toggling) after a manual `resize_window` call. Root cause not confirmed (possibly a devicePixelRatio/viewport mismatch introduced by resizing), but treat single-click UI state changes as unconfirmed until verified by a follow-up screenshot or network call, not just "click succeeded."
 6. ~~"Call Lalamove Rider" (admin dispatch, order status Preparing) fails with the generic message "Could not get a delivery quote right now — please try again."~~ **Root-caused, fixed, and confirmed live.** Live reproduction (user pasted the backend's `[Lalamove]` stderr log, which was already being written server-side before this session) showed the real failure: `POST /v3/orders -> 422 ERR_INVALID_FIELD: '09605168262' is not valid 'phone'. Phone must be in e.164 format...`. This confirms the bug report's Root Cause #1 (payload validation), specifically the recipient phone — customers type their phone at checkout in ordinary PH local format (`09XXXXXXXXX`), which is stored/displayed that way everywhere, but Lalamove's `recipient.phone` strictly requires E.164 (`+639XXXXXXXXX`) and nothing normalized it before the `/v3/orders` call. **Fixed** in `DeliveryDispatchService.java`: added `toE164Philippines()`, which normalizes common PH input shapes to E.164 (returns null — dispatch now fails fast with a clear message — if the result isn't a plausible PH mobile number) and applies it only to the outbound Lalamove call; the stored `guestPhone` is untouched. Also fixed along the way: `LalamoveClient.friendlyMessage()` previously swallowed any Lalamove error id it didn't recognize into one generic string (bug report's Root Cause #4) — now falls back to a status-specific message (401/403 → credentials, 402 → balance, 400/422 → invalid request, 5xx → outage) when the specific id isn't mapped. **Confirmed live** after the user restarted the backend: re-tested end-to-end via direct API calls (store phone re-set to `+639171234567` — H2 had cleared it on restart, as expected per Open Issue 2 — got a real quote, placed test order `ORD-336213` with `guestPhone: "09605168262"`, the exact number from the original report, moved it to `PREPARING`, then dispatched). Result: `HTTP 200`, `deliveryStatus: ASSIGNING_DRIVER`, real Lalamove sandbox `trackingShareLink` returned. Test order lives only in in-memory H2 and disappears on next restart — no cleanup needed.
 
@@ -46,16 +52,18 @@ See `DECISIONS.md` for the full log. Most recent: use a per-machine local JVM tr
 
 # Next Action
 
-1. Re-enter store phone/GCash info in Admin → Store Settings (Open Issue 3: settings page currently fails to render — root-cause that first). Then decide on Open Issue 2 (H2 persistence) so this stops needing re-entry every restart.
-2. Consider surfacing `lalamoveOrderId` on the admin order view (see `backlog.md`) so `simulate-lalamove-webhook.js` doesn't require an H2-console lookup.
-3. If real (not simulated) end-to-end webhook testing is wanted, set up a public tunnel (ngrok/Cloudflare Tunnel) to the local backend and register that URL in the Lalamove sandbox dashboard (Open Issue 10) — otherwise continue relying on `simulate-lalamove-webhook.js`.
+1. Commit the `application.yml`/`.gitignore` changes (currently uncommitted local edits — not pushed).
+2. On the Mac machine: set `TESSDATA_PATH` env var to its local Homebrew tessdata path, and re-attempt reproducing Open Issue 3 (Settings page render bug) — it may reproduce there, or may already be resolved.
+3. Once Open Issue 3 is resolved (or ruled out), re-enter store phone/GCash info in Admin → Store Settings — it will now actually persist across restarts (Open Issue 2 fixed).
+4. Consider surfacing `lalamoveOrderId` on the admin order view (see `backlog.md`) so `simulate-lalamove-webhook.js` doesn't require an H2-console lookup.
+5. If real (not simulated) end-to-end webhook testing is wanted, set up a public tunnel (ngrok/Cloudflare Tunnel) to the local backend and register that URL in the Lalamove sandbox dashboard (Open Issue 10) — otherwise continue relying on `simulate-lalamove-webhook.js`.
 
 # Risks
 
-Any data entered into Admin → Store Settings will be lost on the next backend restart until H2 is made persistent (Open Issue 2).
+None currently blocking — Store Settings data loss on restart (previously the top risk) is resolved.
 
 # Validation Status
 
-Backend delivery flow: confirmed via direct curl, end to end (prior session). Frontend/UI checkout-delivery flow: confirmed this session (browser automation, network-response-verified) — see Current Status.
+Backend delivery flow: confirmed via direct curl, end to end (prior session). Frontend/UI checkout-delivery flow: confirmed via browser automation, network-response-verified (prior session). H2 file-persistence: confirmed live this session via a real restart-and-check cycle. OCR path change: startup-verified only (Windows fallback), not yet tested against a real macOS tessdata install.
 
 Replace and refresh this file each session. A full snapshot of the session this was distilled from is archived at `docs/history/handoffs/2026-08-11-mac-part4-handoff.md`.

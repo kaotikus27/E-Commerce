@@ -5,7 +5,7 @@ server:
 
 spring:
   datasource:
-    url: jdbc:h2:mem:bakerydb;DB_CLOSE_DELAY=-1
+    url: jdbc:h2:file:./data/bakerydb;DB_CLOSE_DELAY=-1
     driver-class-name: org.h2.Driver
     username: sa
     password:
@@ -32,7 +32,9 @@ app:
     secret: "bakery-dev-secret-key-change-me-before-production-0123456789"
     expiration-ms: 86400000
   ocr:
-    tessdata-path: "C:/Users/Public.DESKTOP-3A1LBHM/AppData/Local/Programs/Tesseract-OCR/tessdata"
+    # Per-machine — override with the TESSDATA_PATH env var on any machine other than this one
+    # (e.g. macOS Homebrew installs typically use /opt/homebrew/share/tessdata or /usr/local/share/tessdata).
+    tessdata-path: "${TESSDATA_PATH:C:/Users/Public.DESKTOP-3A1LBHM/AppData/Local/Programs/Tesseract-OCR/tessdata}"
 
 lalamove:
   # No /v3 suffix here — LalamoveClient's paths (e.g. "/v3/quotations") already include it, and

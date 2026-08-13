@@ -24,7 +24,7 @@ Deliver a working mobile-first ordering site for Home by Bami (bakery/coffeeshop
 ## Constraints
 
 - Stack is fixed: Angular 17 (standalone + Signals) frontend, Spring Boot 3 / Java 17 backend.
-- H2 in-memory DB in dev — accepted limitation for now; runtime settings do not survive a backend restart (see `handoff.md`).
+- H2 file-based DB in dev (`jdbc:h2:file:./data/bakerydb`, switched from in-memory 2026-08-13, see `DECISIONS.md` DEC-003) — runtime settings now survive a backend restart.
 - Delivery via Lalamove v3 API; geocoding via Google Geocoding API (free tier, 10,000/month) — Google Places Autocomplete deliberately avoided (no free tier).
 - Interactive delivery-pin map uses Leaflet + OpenStreetMap (no API key, no billing) rather than the Google Maps JS SDK.
 - Development happens across at least two machines (Windows and Mac); machine-local config (env vars, JVM trust store, editor launch configs) does not carry over and must be re-set up per machine.

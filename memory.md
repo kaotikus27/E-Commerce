@@ -26,11 +26,11 @@ Durable, reviewed decisions, constraints, and terminology for the Home by Bami e
 - **Webhook signature verification signs `data` alone** (re-serialized), not the full envelope. The webhook endpoint always returns 200 even on a failed or unrecognized signature — Lalamove disables a webhook URL after enough non-200 responses, and a retry can't fix a payload already rejected as invalid.
 - **Comma spacing measurably changes Google Geocoding's result** for ambiguous local addresses; the address-lookup path normalizes comma spacing before every lookup, and filters out any result Google itself tags as country-level (a sign the search was too vague to be a real address).
 - **`backend/mvnw` must keep its executable bit set in the repo itself** (fixed, committed `4692a83`) — otherwise a fresh clone fails on macOS/Linux with "Permission denied."
-- **Per-machine dev environment setup does not carry over between machines** — env vars, JVM trust store, and editor launch configs need a fresh setup pass on each new machine. A TLS-inspecting corporate proxy (Zscaler) on at least one dev Mac requires a separate local JVM trust store file passed via `MAVEN_OPTS`, rather than modifying the system trust store.
+- **Per-machine dev environment setup does not carry over between machines** — env vars, JVM trust store, and editor launch configs need a fresh setup pass on each new machine. A TLS-inspecting corporate proxy (Zscaler) on at least one dev Mac requires a separate local JVM trust store file passed via `MAVEN_OPTS`, rather than modifying the system trust store. Same pattern now applies to `TESSDATA_PATH` (see DEC-005) — set it locally per machine, never commit a machine-specific value.
+- **H2 is now file-based (`jdbc:h2:file:./data/bakerydb`), not in-memory** (DEC-003, implemented 2026-08-13) — all data, including Store Settings, survives a backend restart. `backend/data/` is git-ignored (real DB file, not shareable). Verified live by setting `storePhone` and confirming it across a restart.
 
 # Long-Lived Constraints
 
 - Do not let the backend accept a client-supplied delivery fee under any circumstance.
 - Do not introduce a new lat/lng column without the explicit precision/scale annotation.
-- Do not assume Store Settings (or any runtime-configured data) survives a backend restart — H2 is in-memory (see `handoff.md` Open Issues).
 - Do not store secrets, API keys, or credentials in this file or anywhere in KOS — they live only in each machine's local shell config, never committed.
