@@ -2,7 +2,7 @@
 
 Open, not-yet-scheduled work. Carried forward across sessions — check off and move to `handoff.md`/`DECISIONS.md` once actually picked up.
 
-- [ ] No priced customization modifiers for products.
+- [x] ~~No priced customization modifiers for products~~ Admin can now set a per-option surcharge (e.g. Oat milk +₱20) per product; priced server-side at order placement (DEC-012, 2026-08-15).
 - [ ] No dedicated refund UI for `PaymentStatus.REFUNDED`.
 - [ ] No phone number field on the customer order-tracking page.
 - [ ] Category restructure (4 categories → 3) — still undecided.

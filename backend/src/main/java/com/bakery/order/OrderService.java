@@ -1,5 +1,7 @@
 package com.bakery.order;
 
+import com.bakery.catalog.Customization;
+import com.bakery.catalog.CustomizationOptionCodec;
 import com.bakery.catalog.Product;
 import com.bakery.catalog.ProductRepository;
 import com.bakery.delivery.DeliveryDispatchService;
@@ -104,7 +106,8 @@ public class OrderService {
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
                             "Product " + itemReq.productId() + " does not exist"));
 
-            BigDecimal lineTotal = product.getPrice().multiply(BigDecimal.valueOf(itemReq.quantity()))
+            BigDecimal unitPrice = product.getPrice().add(resolveOptionsSurcharge(product, itemReq.selectedOptions()));
+            BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(itemReq.quantity()))
                     .setScale(2, RoundingMode.HALF_UP);
             subtotal = subtotal.add(lineTotal);
 
@@ -112,7 +115,7 @@ public class OrderService {
                     .order(order)
                     .productId(product.getId())
                     .productName(product.getName())
-                    .unitPrice(product.getPrice())
+                    .unitPrice(unitPrice)
                     .quantity(itemReq.quantity())
                     .selectedOptionsCsv(OrderOptionCodec.encode(itemReq.selectedOptions()))
                     .lineTotal(lineTotal)
@@ -130,6 +133,30 @@ public class OrderService {
 
         Order saved = orderRepository.save(order);
         return OrderResponseDto.publicView(saved);
+    }
+
+    /** Prices are resolved server-side from the product's own stored customizations, exactly
+     *  like the base price already is — never trusted from the client. Rejects a selection that
+     *  doesn't match a real customization/option on this product, since a typo'd or forged option
+     *  name would otherwise silently price at zero surcharge instead of failing loudly. */
+    private BigDecimal resolveOptionsSurcharge(Product product, Map<String, String> selectedOptions) {
+        BigDecimal surcharge = BigDecimal.ZERO;
+        if (selectedOptions == null) return surcharge;
+        for (Map.Entry<String, String> selection : selectedOptions.entrySet()) {
+            Customization customization = product.getCustomizations().stream()
+                    .filter(c -> c.getName().equals(selection.getKey()))
+                    .findFirst()
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "Product " + product.getId() + " has no \"" + selection.getKey() + "\" customization"));
+            CustomizationOptionCodec.PricedOption option = CustomizationOptionCodec.decode(customization.getOptionsCsv())
+                    .stream()
+                    .filter(o -> o.name().equals(selection.getValue()))
+                    .findFirst()
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "\"" + selection.getValue() + "\" is not a valid option for \"" + selection.getKey() + "\""));
+            surcharge = surcharge.add(option.priceDelta());
+        }
+        return surcharge;
     }
 
     /** Public/unauthenticated lookup — keyed by publicToken, not orderNumber, so the short

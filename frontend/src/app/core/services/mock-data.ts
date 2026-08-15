@@ -7,9 +7,34 @@ export const MOCK_CATEGORIES: Category[] = [
   { id: 4, name: 'Daily Loaves', icon: '🍞' },
 ];
 
-const MILK_OPTIONS = { name: 'Milk', options: ['Whole', 'Oat', 'Almond', 'Skim'], required: true };
-const SUGAR_LEVEL = { name: 'Sugar Level', options: ['None', 'Light', 'Regular', 'Extra'], required: true };
-const TEMP = { name: 'Temperature', options: ['Warmed', 'Room Temp'], required: false };
+const MILK_OPTIONS = {
+  name: 'Milk',
+  options: [
+    { name: 'Whole', priceDelta: 0 },
+    { name: 'Oat', priceDelta: 0 },
+    { name: 'Almond', priceDelta: 0 },
+    { name: 'Skim', priceDelta: 0 },
+  ],
+  required: true,
+};
+const SUGAR_LEVEL = {
+  name: 'Sugar Level',
+  options: [
+    { name: 'None', priceDelta: 0 },
+    { name: 'Light', priceDelta: 0 },
+    { name: 'Regular', priceDelta: 0 },
+    { name: 'Extra', priceDelta: 0 },
+  ],
+  required: true,
+};
+const TEMP = {
+  name: 'Temperature',
+  options: [
+    { name: 'Warmed', priceDelta: 0 },
+    { name: 'Room Temp', priceDelta: 0 },
+  ],
+  required: false,
+};
 
 export const MOCK_PRODUCTS: Product[] = [
   { id: 1, name: 'Butter Croissant', description: 'Flaky, all-butter croissant baked fresh every morning.', price: 150.00, categoryId: 3, categoryName: 'Stamina Bakes', image: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=600', badges: ['Fresh Baked'], rating: 4.8, customizations: [TEMP], available: true },

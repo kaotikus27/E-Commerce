@@ -6,8 +6,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -55,7 +57,7 @@ public class ProductService {
                 .badgesCsv(request.badges() == null ? null : String.join(",", request.badges()))
                 .rating(0)
                 .available(request.available())
-                .customizations(toCustomizations(request.customizationKeys()))
+                .customizations(toCustomizations(request.customizationKeys(), request.customizationPrices()))
                 .build();
         return ProductDto.from(productRepository.save(product));
     }
@@ -72,7 +74,7 @@ public class ProductService {
         product.setImage(request.image());
         product.setBadgesCsv(request.badges() == null ? null : String.join(",", request.badges()));
         product.setAvailable(request.available());
-        product.setCustomizations(toCustomizations(request.customizationKeys()));
+        product.setCustomizations(toCustomizations(request.customizationKeys(), request.customizationPrices()));
 
         return ProductDto.from(productRepository.save(product));
     }
@@ -100,19 +102,32 @@ public class ProductService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Category " + categoryId + " does not exist"));
     }
 
-    private List<Customization> toCustomizations(List<String> keys) {
+    /** Preset option names per key — fixed and shared across all products. Only each option's
+     *  price (customizationPrices, per-product) varies; a missing price defaults to no surcharge. */
+    private static final Map<String, List<String>> PRESET_OPTION_NAMES = Map.of(
+            "MILK", List.of("Whole", "Oat", "Almond", "Skim"),
+            "SUGAR", List.of("None", "Light", "Regular", "Extra"),
+            "TEMP", List.of("Warmed", "Room Temp"));
+
+    private List<Customization> toCustomizations(List<String> keys, Map<String, Map<String, BigDecimal>> customizationPrices) {
         List<Customization> customizations = new ArrayList<>();
         if (keys == null) return customizations;
+        Map<String, Map<String, BigDecimal>> prices = customizationPrices == null ? Map.of() : customizationPrices;
         for (String key : keys) {
-            switch (key) {
-                case "MILK" -> customizations.add(Customization.builder()
-                        .name("Milk").optionsCsv("Whole,Oat,Almond,Skim").required(true).build());
-                case "SUGAR" -> customizations.add(Customization.builder()
-                        .name("Sugar Level").optionsCsv("None,Light,Regular,Extra").required(true).build());
-                case "TEMP" -> customizations.add(Customization.builder()
-                        .name("Temperature").optionsCsv("Warmed,Room Temp").required(false).build());
+            String name = switch (key) {
+                case "MILK" -> "Milk";
+                case "SUGAR" -> "Sugar Level";
+                case "TEMP" -> "Temperature";
                 default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown customization key: " + key);
-            }
+            };
+            boolean required = key.equals("MILK") || key.equals("SUGAR");
+            Map<String, BigDecimal> keyPrices = prices.getOrDefault(key, Map.of());
+            List<CustomizationOptionCodec.PricedOption> options = PRESET_OPTION_NAMES.get(key).stream()
+                    .map(optionName -> new CustomizationOptionCodec.PricedOption(
+                            optionName, keyPrices.getOrDefault(optionName, BigDecimal.ZERO)))
+                    .toList();
+            customizations.add(Customization.builder()
+                    .name(name).optionsCsv(CustomizationOptionCodec.encode(options)).required(required).build());
         }
         return customizations;
     }

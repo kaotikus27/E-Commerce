@@ -12,6 +12,14 @@ const CUSTOMIZATION_NAME_TO_KEY: Record<string, string> = {
   Temperature: 'TEMP',
 };
 
+/** Mirrors the backend's PRESET_OPTION_NAMES (ProductService.java) — option names and
+ *  required-ness are fixed per preset; only the price per option is per-product-editable. */
+const CUSTOMIZATION_PRESET_OPTIONS: Record<string, string[]> = {
+  MILK: ['Whole', 'Oat', 'Almond', 'Skim'],
+  SUGAR: ['None', 'Light', 'Regular', 'Extra'],
+  TEMP: ['Warmed', 'Room Temp'],
+};
+
 @Component({
   selector: 'app-admin-product-form-modal',
   standalone: true,
@@ -52,8 +60,38 @@ const CUSTOMIZATION_NAME_TO_KEY: Record<string, string> = {
 
       <div class="field">
         <label class="checkbox-row"><input type="checkbox" [(ngModel)]="milk" name="milk" /> Milk Choice (Oat, Whole, Almond, Skim)</label>
+        @if (milk) {
+          <div class="option-prices">
+            @for (opt of presetOptions('MILK'); track opt) {
+              <label class="option-price-row">
+                <span>{{ opt }}</span>
+                <span class="price-input"><span class="peso">+₱</span><input type="number" min="0" step="0.05" [(ngModel)]="customizationPrices['MILK'][opt]" [name]="'milk-' + opt" /></span>
+              </label>
+            }
+          </div>
+        }
         <label class="checkbox-row"><input type="checkbox" [(ngModel)]="sugar" name="sugar" /> Sugar Level</label>
+        @if (sugar) {
+          <div class="option-prices">
+            @for (opt of presetOptions('SUGAR'); track opt) {
+              <label class="option-price-row">
+                <span>{{ opt }}</span>
+                <span class="price-input"><span class="peso">+₱</span><input type="number" min="0" step="0.05" [(ngModel)]="customizationPrices['SUGAR'][opt]" [name]="'sugar-' + opt" /></span>
+              </label>
+            }
+          </div>
+        }
         <label class="checkbox-row"><input type="checkbox" [(ngModel)]="temp" name="temp" /> Warm Up Option (Heated / Room Temp)</label>
+        @if (temp) {
+          <div class="option-prices">
+            @for (opt of presetOptions('TEMP'); track opt) {
+              <label class="option-price-row">
+                <span>{{ opt }}</span>
+                <span class="price-input"><span class="peso">+₱</span><input type="number" min="0" step="0.05" [(ngModel)]="customizationPrices['TEMP'][opt]" [name]="'temp-' + opt" /></span>
+              </label>
+            }
+          </div>
+        }
       </div>
 
       <div class="field">
@@ -68,6 +106,11 @@ const CUSTOMIZATION_NAME_TO_KEY: Record<string, string> = {
   styles: [`
     .preview { width: 120px; height: 90px; object-fit: cover; border-radius: var(--radius-sm); margin-top: 8px; }
     .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; min-height: 36px; }
+    .option-prices { display: flex; flex-direction: column; gap: 4px; margin: 0 0 8px 26px; }
+    .option-price-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 400; }
+    .price-input { display: flex; align-items: center; gap: 4px; }
+    .price-input input { width: 72px; padding: 4px 6px; }
+    .peso { color: var(--color-text-muted); }
   `],
 })
 export class AdminProductFormModalComponent implements OnChanges {
@@ -85,15 +128,32 @@ export class AdminProductFormModalComponent implements OnChanges {
   milk = false;
   sugar = false;
   temp = false;
+  /** key -> option name -> price delta for this product. Always fully populated (defaulting
+   *  to 0) for all 3 presets regardless of which checkboxes are on, so toggling a box back on
+   *  doesn't lose whatever was typed in before it was unchecked, within the same edit session. */
+  customizationPrices: Record<string, Record<string, number>> = this.emptyCustomizationPrices();
   previewUrl = '';
   private selectedFile: File | null = null;
   saving = false;
 
   constructor(private products: AdminProductService) {}
 
+  private emptyCustomizationPrices(): Record<string, Record<string, number>> {
+    const result: Record<string, Record<string, number>> = {};
+    for (const [key, names] of Object.entries(CUSTOMIZATION_PRESET_OPTIONS)) {
+      result[key] = Object.fromEntries(names.map(n => [n, 0]));
+    }
+    return result;
+  }
+
+  presetOptions(key: string): string[] {
+    return CUSTOMIZATION_PRESET_OPTIONS[key];
+  }
+
   ngOnChanges() {
     if (!this.open) return;
     this.selectedFile = null;
+    this.customizationPrices = this.emptyCustomizationPrices();
 
     if (this.product) {
       this.name = this.product.name;
@@ -106,6 +166,13 @@ export class AdminProductFormModalComponent implements OnChanges {
       this.milk = keys.has('MILK');
       this.sugar = keys.has('SUGAR');
       this.temp = keys.has('TEMP');
+      for (const customization of this.product.customizations) {
+        const key = CUSTOMIZATION_NAME_TO_KEY[customization.name];
+        if (!key) continue;
+        for (const opt of customization.options) {
+          this.customizationPrices[key][opt.name] = opt.priceDelta;
+        }
+      }
     } else {
       this.name = '';
       this.description = '';
@@ -140,6 +207,7 @@ export class AdminProductFormModalComponent implements OnChanges {
         ...(this.sugar ? ['SUGAR'] : []),
         ...(this.temp ? ['TEMP'] : []),
       ],
+      customizationPrices: this.customizationPrices,
     });
 
     const submit = (imageUrl: string) => {

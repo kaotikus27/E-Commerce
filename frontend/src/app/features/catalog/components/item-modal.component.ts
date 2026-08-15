@@ -23,8 +23,8 @@ import { toAbsoluteImageUrl } from '../../../core/utils/image-url.util';
           <div class="field">
             <label>{{ custom.name }}{{ custom.required ? ' *' : '' }}</label>
             <select [(ngModel)]="selections[custom.name]" [name]="custom.name">
-              @for (opt of custom.options; track opt) {
-                <option [value]="opt">{{ opt }}</option>
+              @for (opt of custom.options; track opt.name) {
+                <option [value]="opt.name">{{ opt.name }}{{ opt.priceDelta ? ' (+₱' + opt.priceDelta.toFixed(2) + ')' : '' }}</option>
               }
             </select>
           </div>
@@ -40,7 +40,7 @@ import { toAbsoluteImageUrl } from '../../../core/utils/image-url.util';
         </div>
 
         <button class="btn btn-primary btn-block" [disabled]="!product.available" (click)="addToCart()">
-          {{ product.available ? 'Add to Cart — ₱' + (product.price * quantity).toFixed(2) : 'Sold Out for Today' }}
+          {{ product.available ? 'Add to Cart — ₱' + ((product.price + selectedOptionsDelta()) * quantity).toFixed(2) : 'Sold Out for Today' }}
         </button>
       }
     </app-modal>
@@ -68,16 +68,30 @@ export class ItemModalComponent implements OnChanges {
     this.quantity = 1;
     this.selections = {};
     this.product?.customizations.forEach(c => {
-      this.selections[c.name] = c.options[0];
+      this.selections[c.name] = c.options[0]?.name ?? '';
     });
   }
 
   increment() { this.quantity++; }
   decrement() { if (this.quantity > 1) this.quantity--; }
 
+  /** Sum of the currently selected option's priceDelta across every customization. */
+  selectedOptionsDelta(): number {
+    if (!this.product) return 0;
+    return this.product.customizations.reduce((sum, custom) => {
+      const selectedName = this.selections[custom.name];
+      const option = custom.options.find(o => o.name === selectedName);
+      return sum + (option?.priceDelta ?? 0);
+    }, 0);
+  }
+
   addToCart() {
     if (!this.product || !this.product.available) return;
-    const options: SelectedOption[] = Object.entries(this.selections).map(([name, value]) => ({ name, value }));
+    const options: SelectedOption[] = this.product.customizations.map(custom => {
+      const value = this.selections[custom.name];
+      const priceDelta = custom.options.find(o => o.name === value)?.priceDelta ?? 0;
+      return { name: custom.name, value, priceDelta };
+    });
     this.addedToCart.emit({ product: this.product, quantity: this.quantity, options });
     this.close.emit();
   }

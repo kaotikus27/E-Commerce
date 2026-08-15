@@ -15,6 +15,8 @@ export interface ProductPayload {
   badges: string[];
   available: boolean;
   customizationKeys: string[];
+  /** key -> option name -> price delta, for whichever of customizationKeys are active. */
+  customizationPrices: Record<string, Record<string, number>>;
 }
 
 /**

@@ -46,9 +46,13 @@ export class CartService {
     return `${product.id}__${optKey}`;
   }
 
+  private unitPriceWithOptions(product: Product, options: SelectedOption[]): number {
+    return product.price + options.reduce((sum, o) => sum + o.priceDelta, 0);
+  }
+
   addItem(product: Product, quantity: number, options: SelectedOption[] = []) {
     const id = this.lineId(product, options);
-    const unitPrice = product.price;
+    const unitPrice = this.unitPriceWithOptions(product, options);
     const existing = this._items().find(i => i.id === id);
 
     if (existing) {
@@ -74,7 +78,7 @@ export class CartService {
     }
     this._items.set(this._items().map(i =>
       i.id === id
-        ? { ...i, quantity, lineTotal: Math.round(i.product.price * quantity * 100) / 100 }
+        ? { ...i, quantity, lineTotal: Math.round(this.unitPriceWithOptions(i.product, i.selectedOptions) * quantity * 100) / 100 }
         : i
     ));
   }

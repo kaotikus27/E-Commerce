@@ -1,6 +1,12 @@
+export interface CustomizationOption {
+  name: string;
+  /** Per-product surcharge for this option, e.g. Oat milk might be +20 on one product and free on another. */
+  priceDelta: number;
+}
+
 export interface Customization {
   name: string;           // e.g. "Milk", "Sugar Level", "Temperature"
-  options: string[];       // e.g. ["Oat", "Whole", "Almond"]
+  options: CustomizationOption[];
   required: boolean;
 }
 
