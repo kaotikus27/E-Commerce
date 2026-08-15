@@ -254,7 +254,7 @@ export class AdminOrdersBoardComponent implements OnInit, OnDestroy {
           this.editedRefs.update(m => ({ ...m, [order.id]: order.gcashReference ?? '' }));
         }
       }
-    });
+    }, { allowSignalWrites: true });
   }
 
   getEditedRef(order: AdminOrder): string {

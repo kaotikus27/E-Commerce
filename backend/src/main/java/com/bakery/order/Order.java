@@ -20,8 +20,19 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** Short, human-readable reference — read out to customers, printed on receipts, used in
+     *  admin URLs. Deliberately guessable, so it must NEVER be the key to a permitAll lookup. */
     @Column(unique = true, nullable = false)
     private String orderNumber;
+
+    /** Unguessable public tracking id (UUIDv4). This is the only key the unauthenticated
+     *  order-status endpoint accepts, so that the short human-readable orderNumber is never
+     *  usable as a public lookup key. */
+    // H2's schema-update path rebuilds the table when adding this non-null column. The default
+    // gives historical rows an unguessable token during that copy; new rows provide their UUID.
+    @Column(unique = true, nullable = false, updatable = false, length = 36,
+            columnDefinition = "varchar(36) default random_uuid()")
+    private String publicToken;
 
     private String guestName;
     private String guestPhone;

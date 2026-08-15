@@ -32,6 +32,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public class OrderService {
 
     private static final BigDecimal TAX_RATE = new BigDecimal("0.0875");
+    private static final int ORDER_NUMBER_MAX_ATTEMPTS = 10;
     private static final Path RECEIPT_UPLOAD_DIR = Path.of("uploads", "receipts");
     private static final Map<String, String> ALLOWED_RECEIPT_CONTENT_TYPES = Map.of(
             "image/png", "png",
@@ -62,6 +63,7 @@ public class OrderService {
 
         Order order = Order.builder()
                 .orderNumber(generateOrderNumber())
+                .publicToken(UUID.randomUUID().toString())
                 .guestName(request.guestName())
                 .guestPhone(request.guestPhone())
                 .guestEmail(request.guestEmail())
@@ -205,7 +207,8 @@ public class OrderService {
         String driverName = null;
         String driverPhone = null;
         String driverPlateNumber = null;
-        if (lalamoveOrder.driverId() != null && order.getDriverName() == null) {
+        if (lalamoveOrder.driverId() != null && !lalamoveOrder.driverId().isBlank()
+                && order.getDriverName() == null) {
             LalamoveDriver driver = lalamoveClient.getDriver(lalamoveOrderId, lalamoveOrder.driverId());
             driverName = driver.name();
             driverPhone = driver.phone();
@@ -289,9 +292,21 @@ public class OrderService {
         return OrderResponseDto.from(orderRepository.save(order));
     }
 
+    /** orderNumber is a short human-readable reference on a unique column. Generating it randomly
+     *  with no collision check meant a ~50% chance of at least one clash by roughly 1,100 orders,
+     *  surfacing as an unhandled constraint violation — a 500 on an ALREADY-PAID checkout, after
+     *  the delivery quote had been consumed and the receipt file written. Retry on collision, and
+     *  fail loudly rather than silently if the space is somehow exhausted.
+     *  (Note the old upper bound was exclusive, so 999999 was never issued.) */
     private String generateOrderNumber() {
-        int suffix = ThreadLocalRandom.current().nextInt(100000, 999999);
-        return "ORD-" + suffix;
+        for (int attempt = 0; attempt < ORDER_NUMBER_MAX_ATTEMPTS; attempt++) {
+            String candidate = "ORD-" + ThreadLocalRandom.current().nextInt(100_000, 1_000_000);
+            if (!orderRepository.existsByOrderNumber(candidate)) {
+                return candidate;
+            }
+        }
+        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                "Could not allocate an order number. Please try again.");
     }
 
     /** Runs OCR, stores the image, and records both — only seeds gcashReference from OCR if it's
