@@ -31,8 +31,12 @@
  *   --plate <plate>           for DRIVER_ASSIGNED (default "ABC 1234")
  *   --full                    send DRIVER_ASSIGNED then ORDER_STATUS_CHANGED(ON_GOING) back to back
  *   --lifecycle               run the full realistic sequence — see "Lifecycle mode" below
- *   --order-number <ORD-XXX>  order number (not lalamoveOrderId) — only used to print live
- *                             before/after state after each step via GET /api/v1/orders/:id
+ *   --public-token <uuid>     the order's publicToken (not orderNumber, not lalamoveOrderId) —
+ *                             only used to print live before/after state after each step via
+ *                             GET /api/v1/orders/:publicToken. The public endpoint resolves by
+ *                             publicToken only (see DEC-007) — passing an orderNumber here just
+ *                             gets a silent 404 on every step, which looks like the webhook isn't
+ *                             doing anything even when it's working perfectly (see docsdebug.md).
  *   --driver2-name/-phone/-plate   the replacement driver for --lifecycle (default "Maria Santos")
  *   --step-delay-ms <ms>      pause between --lifecycle steps (default 800)
  *   --url <base>              backend base URL (default http://localhost:8080)
@@ -57,27 +61,30 @@
  * Requires LALAMOVE_API_SECRET in the environment — the same variable the backend itself reads
  * (see application.yml's lalamove.api-secret).
  *
- * Finding the lalamoveOrderId: it is NOT exposed by any admin API/UI today (OrderResponseDto
- * only exposes trackingShareLink, which is a separate, Lalamove-generated public share token —
- * NOT the same value as the internal orderId; using the share-link token here will silently
- * no-op, since the backend only logs a bad signature, not an unmatched order id). With H2
- * console enabled (application.yml: spring.h2.console.enabled=true, path=/h2-console), the
- * dev/in-memory DB is queryable in the same running process:
+ * Finding the lalamoveOrderId (and, if using --public-token, the publicToken): neither is exposed
+ * by any admin API/UI today (OrderResponseDto only exposes trackingShareLink, which is a separate,
+ * Lalamove-generated public share token — NOT the same value as the internal orderId; using the
+ * share-link token here will silently no-op, since the backend only logs a bad signature, not an
+ * unmatched order id). With H2 console enabled (application.yml: spring.h2.console.enabled=true,
+ * path=/h2-console), the file-backed DB is queryable in the same running process (NOTE: this is
+ * jdbc:h2:file, not jdbc:h2:mem — the DB moved to a file in DEC-003, 2026-08-13; using the old
+ * in-memory URL here just gets you an empty new database, not an error, which is its own trap):
  *   1. GET  http://localhost:8080/h2-console/login.jsp  (follow the jsessionid redirect)
  *   2. POST http://localhost:8080/h2-console/login.do?jsessionid=<id>
- *        driver=org.h2.Driver, url=jdbc:h2:mem:bakerydb, user=sa, password=, language=en,
+ *        driver=org.h2.Driver, url=jdbc:h2:file:./data/bakerydb, user=sa, password=, language=en,
  *        setting=Generic H2 (Embedded), name=Generic H2 (Embedded)
  *   3. POST http://localhost:8080/h2-console/query.do?jsessionid=<id>
- *        sql=SELECT order_number, lalamove_order_id, delivery_status, driver_name FROM orders
+ *        sql=SELECT order_number, public_token, lalamove_order_id, delivery_status FROM orders
  *            WHERE order_number='ORD-XXXXXX'
  *   (all three calls need the same cookie jar / jsessionid). Same session cookies work for any
- *   further ad-hoc query. This is a real gap worth fixing later — surfacing lalamoveOrderId on
- *   the admin order view would make this lookup unnecessary.
+ *   further ad-hoc query. This is a real gap worth fixing later — surfacing lalamoveOrderId (and
+ *   publicToken) on the admin order view would make this lookup unnecessary.
  *
  * Examples:
  *   node scripts/simulate-lalamove-webhook.js PH1002... --driver-name "Juan Cruz"
  *   node scripts/simulate-lalamove-webhook.js PH1002... --full
  *   node scripts/simulate-lalamove-webhook.js PH1002... --event ORDER_STATUS_CHANGED --status PICKED_UP
+ *   node scripts/simulate-lalamove-webhook.js PH1002... --lifecycle --public-token 010c6241-...
  */
 
 const crypto = require('crypto');
@@ -122,7 +129,7 @@ Options:
   --plate <plate>           for DRIVER_ASSIGNED (default "ABC 1234")
   --full                    send DRIVER_ASSIGNED then ORDER_STATUS_CHANGED(ON_GOING) back to back
   --lifecycle               run the full sequence: driver A -> driver B -> ON_GOING -> PICKED_UP -> COMPLETED
-  --order-number <ORD-XXX>  order number (not lalamoveOrderId) — prints live state after each step
+  --public-token <uuid>     the order's publicToken (not orderNumber) — prints live state after each step
   --driver2-name/-phone/-plate   replacement driver for --lifecycle (default "Maria Santos")
   --step-delay-ms <ms>      pause between --lifecycle steps (default 800)
   --url <base>              backend base URL (default http://localhost:8080)
@@ -132,7 +139,7 @@ Examples:
   node scripts/simulate-lalamove-webhook.js PH1002... --driver-name "Juan Cruz"
   node scripts/simulate-lalamove-webhook.js PH1002... --full
   node scripts/simulate-lalamove-webhook.js PH1002... --event ORDER_STATUS_CHANGED --status PICKED_UP
-  node scripts/simulate-lalamove-webhook.js PH1002... --lifecycle --order-number ORD-336213
+  node scripts/simulate-lalamove-webhook.js PH1002... --lifecycle --public-token 010c6241-...
 `);
 }
 
@@ -173,12 +180,12 @@ function sleep(ms) {
 
 /** Prints the fields --lifecycle cares about, straight from the backend — not assumed. */
 async function printOrderState(opts, label) {
-  if (!opts.orderNumber) return;
+  if (!opts.publicToken) return;
   const base = opts.url || 'http://localhost:8080';
   try {
-    const res = await fetch(`${base}/api/v1/orders/${opts.orderNumber}`);
+    const res = await fetch(`${base}/api/v1/orders/${opts.publicToken}`);
     if (!res.ok) {
-      console.log(`  [${label}] GET /api/v1/orders/${opts.orderNumber} -> HTTP ${res.status}`);
+      console.log(`  [${label}] GET /api/v1/orders/${opts.publicToken} -> HTTP ${res.status}`);
       return;
     }
     const order = await res.json();
@@ -277,7 +284,7 @@ async function main() {
 
   const opts = {
     lalamoveOrderId,
-    orderNumber: args['order-number'],
+    publicToken: args['public-token'],
     driverName: args['driver-name'] || 'Simulated Rider',
     driverPhone: args['driver-phone'] || '+639171234567',
     plate: args.plate || 'ABC 1234',
