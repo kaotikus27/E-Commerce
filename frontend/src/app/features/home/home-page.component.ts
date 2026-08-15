@@ -113,15 +113,19 @@ import { FaqAccordionComponent } from '../../shared/components/faq-accordion/faq
       </div>
     </section>
 
+    @if (promotionService.promotions().length) {
+      <span class="eyebrow promo-eyebrow">🍂 A Touch of Magic 🍂</span>
+    }
     @for (promo of promotionService.promotions(); track promo.id) {
-      <section class="promo">
-        <div class="container promo-inner">
+      <section class="container">
+        <div class="promo">
+          <span class="promo-tag">🎁 Limited Time Offer</span>
           <h2 class="promo-title">{{ promo.title }}</h2>
           @if (promo.description) {
             <p>{{ promo.description }}</p>
           }
           @if (promo.buttonLabel && promo.buttonLink) {
-            <a [href]="promo.buttonLink" (click)="goTo($event, promo.buttonLink!)" class="btn btn-primary">{{ promo.buttonLabel }}</a>
+            <a [href]="promo.buttonLink" (click)="goTo($event, promo.buttonLink!)" class="btn promo-btn">{{ promo.buttonLabel }}</a>
           }
         </div>
       </section>
@@ -235,10 +239,21 @@ import { FaqAccordionComponent } from '../../shared/components/faq-accordion/faq
     .featured-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
     .featured-header .eyebrow { color: var(--color-terracotta); }
 
-    .promo { background: var(--color-sage-dark); margin: 40px 0; padding: 40px 0; border-radius: var(--radius-lg); }
-    .promo-inner { text-align: center; color: var(--color-canvas-oat); }
-    .promo-title { color: var(--color-canvas-oat); }
-    .promo-inner p { margin-bottom: 20px; }
+    .promo-eyebrow { display: block; text-align: center; margin: 56px auto 20px; }
+    .promo {
+      max-width: 820px; margin: 0 auto 56px; padding: 48px 40px; border-radius: var(--radius-lg);
+      background: var(--color-sage-dark); color: var(--color-canvas-oat); text-align: center;
+      box-shadow: var(--shadow-elevated);
+    }
+    .promo-tag {
+      display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--color-canvas-oat); background: rgba(240, 228, 200, 0.14); border-radius: var(--radius-pill);
+      padding: 6px 16px; margin-bottom: 16px;
+    }
+    .promo-title { color: var(--color-canvas-oat); margin: 0 0 12px; }
+    .promo p { margin: 0 auto 24px; max-width: 560px; line-height: 1.6; opacity: 0.9; }
+    .promo-btn { background: var(--color-canvas-oat); color: var(--color-text-chocolate); }
+    .promo-btn:hover { background: var(--color-white); }
 
     .testimonials { margin: 40px auto 56px; }
     .quote-grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
