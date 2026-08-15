@@ -132,11 +132,24 @@ import { FaqAccordionComponent } from '../../shared/components/faq-accordion/faq
     }
 
     <section class="container testimonials">
-      <h2>What Our Regulars Say</h2>
+      <span class="eyebrow testimonials-eyebrow">Heartfelt Whispers</span>
+      <h2>What Our Guests Say</h2>
       <div class="quote-grid">
-        <blockquote class="card">"Best croissants in the neighborhood — ordering ahead means I never miss picking mine up fresh." <cite>— Priya M.</cite></blockquote>
-        <blockquote class="card">"The order tracker makes it so easy to time my walk over perfectly." <cite>— Daniel R.</cite></blockquote>
-        <blockquote class="card">"Their sourdough loaves sell out fast — glad I can reserve mine online now." <cite>— Ana L.</cite></blockquote>
+        <blockquote class="card">
+          <span class="quote-mark" aria-hidden="true">"</span>
+          <p>Best croissants in the neighborhood — ordering ahead means I never miss picking mine up fresh.</p>
+          <cite>Priya M.<span class="quote-role">Neighborhood Regular</span></cite>
+        </blockquote>
+        <blockquote class="card">
+          <span class="quote-mark" aria-hidden="true">"</span>
+          <p>The order tracker makes it so easy to time my walk over perfectly.</p>
+          <cite>Daniel R.<span class="quote-role">Weekday Regular</span></cite>
+        </blockquote>
+        <blockquote class="card">
+          <span class="quote-mark" aria-hidden="true">"</span>
+          <p>Their sourdough loaves sell out fast — glad I can reserve mine online now.</p>
+          <cite>Ana L.<span class="quote-role">Sourdough Subscriber</span></cite>
+        </blockquote>
       </div>
     </section>
 
@@ -255,11 +268,16 @@ import { FaqAccordionComponent } from '../../shared/components/faq-accordion/faq
     .promo-btn { background: var(--color-canvas-oat); color: var(--color-text-chocolate); }
     .promo-btn:hover { background: var(--color-white); }
 
-    .testimonials { margin: 40px auto 56px; }
-    .quote-grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
+    .testimonials { margin: 56px auto; text-align: center; }
+    .testimonials-eyebrow { display: block; margin-bottom: 8px; }
+    .testimonials h2 { margin: 0 0 32px; }
+    .quote-grid { display: grid; gap: 16px; grid-template-columns: 1fr; text-align: left; }
     @media (min-width: 720px) { .quote-grid { grid-template-columns: repeat(3, 1fr); } }
-    blockquote { padding: 20px; margin: 0; font-style: italic; }
-    cite { display: block; margin-top: 10px; font-style: normal; font-weight: 700; color: var(--color-terracotta); font-size: 13px; }
+    blockquote { padding: 28px 24px 24px; margin: 0; display: flex; flex-direction: column; }
+    .quote-mark { font-size: 40px; line-height: 1; font-family: Georgia, serif; color: var(--color-terracotta); opacity: 0.5; margin-bottom: 4px; }
+    blockquote p { font-style: italic; margin: 0 0 16px; color: var(--color-text-chocolate); line-height: 1.5; }
+    cite { display: block; font-style: normal; font-weight: 700; color: var(--color-terracotta); font-size: 13px; }
+    .quote-role { display: block; margin-top: 2px; font-weight: 600; color: var(--color-text-muted); font-size: 12px; text-transform: none; }
 
     .faq-section { margin: 0 auto 56px; max-width: 720px; }
 
