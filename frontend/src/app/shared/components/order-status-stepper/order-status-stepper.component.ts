@@ -1,8 +1,27 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { OrderStatus } from '../../../core/models/order.model';
+import { DeliveryStatus, FulfillmentType, OrderStatus } from '../../../core/models/order.model';
 
-interface Step { key: OrderStatus; label: string; icon: string; }
+interface Step { label: string; icon: string; }
+
+const PICKUP_STEPS: Step[] = [
+  { label: 'Order Received', icon: '📝' },
+  { label: 'Preparing', icon: '🔥' },
+  { label: 'Ready for Pickup', icon: '🛍️' },
+  { label: 'Picked Up', icon: '✅' },
+];
+
+/** Reflects Lalamove's real rider lifecycle instead of relabeling the pickup steps — a delivery
+ *  customer sees "a rider is coming" and "your rider has it" as distinct milestones, not one
+ *  generic "ready" step. Splitting these into two only needs deliveryStatus, since DEC-010
+ *  already guarantees order.status only reaches READY once a rider is confirmed. */
+const DELIVERY_STEPS: Step[] = [
+  { label: 'Order Received', icon: '📝' },
+  { label: 'Preparing', icon: '🔥' },
+  { label: 'Rider Assigned', icon: '🛵' },
+  { label: 'Picked Up', icon: '📦' },
+  { label: 'Delivered', icon: '✅' },
+];
 
 @Component({
   selector: 'app-order-status-stepper',
@@ -10,11 +29,11 @@ interface Step { key: OrderStatus; label: string; icon: string; }
   imports: [CommonModule],
   template: `
     <div class="stepper">
-      @for (step of steps; track step.key; let i = $index) {
-        <div class="step" [class.active]="i <= currentIndex" [class.current]="i === currentIndex">
+      @for (step of steps; track $index) {
+        <div class="step" [class.active]="$index <= currentIndex" [class.current]="$index === currentIndex">
           <div class="dot">{{ step.icon }}</div>
           <span class="label">{{ step.label }}</span>
-          @if (i < steps.length - 1) { <div class="line" [class.filled]="i < currentIndex"></div> }
+          @if ($index < steps.length - 1) { <div class="line" [class.filled]="$index < currentIndex"></div> }
         </div>
       }
     </div>
@@ -37,15 +56,24 @@ interface Step { key: OrderStatus; label: string; icon: string; }
 })
 export class OrderStatusStepperComponent {
   @Input() status: OrderStatus = 'RECEIVED';
+  @Input() fulfillmentType: FulfillmentType = 'PICKUP';
+  @Input() deliveryStatus?: DeliveryStatus;
 
-  steps: Step[] = [
-    { key: 'RECEIVED', label: 'Order Received', icon: '📝' },
-    { key: 'PREPARING', label: 'Preparing', icon: '🔥' },
-    { key: 'READY', label: 'Ready for Pickup', icon: '🛍️' },
-    { key: 'COMPLETED', label: 'Picked Up', icon: '✅' },
-  ];
+  get steps(): Step[] {
+    return this.fulfillmentType === 'DELIVERY' ? DELIVERY_STEPS : PICKUP_STEPS;
+  }
 
-  get currentIndex() {
-    return this.steps.findIndex(s => s.key === this.status);
+  get currentIndex(): number {
+    if (this.status === 'RECEIVED') return 0;
+    if (this.status === 'PREPARING') return 1;
+    if (this.status === 'COMPLETED') return this.fulfillmentType === 'DELIVERY' ? 4 : 3;
+
+    // status === 'READY': DEC-010 only advances a delivery order here once a rider is already
+    // confirmed, so this whole stage means "a rider is coming" (index 2) — deliveryStatus just
+    // tells us whether that rider has the order in hand yet (index 3) or not.
+    if (this.fulfillmentType === 'DELIVERY') {
+      return this.deliveryStatus === 'PICKED_UP' ? 3 : 2;
+    }
+    return 2;
   }
 }

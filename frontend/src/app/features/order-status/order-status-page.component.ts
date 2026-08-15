@@ -30,8 +30,14 @@ const POLL_MS = 6000;
           <h1>Order #{{ order()!.id }}</h1>
           @if (order()!.status === 'CANCELLED') {
             <p class="eta cancelled">This order was cancelled.{{ order()!.cancelReason ? ' Reason: ' + order()!.cancelReason : '' }}</p>
+          } @else if (isDeliveryFailed(order()!)) {
+            <p class="eta cancelled">Your delivery couldn't be completed. Please contact the store.</p>
           } @else {
-            <app-order-status-stepper [status]="order()!.status"></app-order-status-stepper>
+            <app-order-status-stepper
+              [status]="order()!.status"
+              [fulfillmentType]="order()!.fulfillmentType"
+              [deliveryStatus]="order()!.deliveryStatus"
+            ></app-order-status-stepper>
             <p class="eta">{{ statusMessage() }}</p>
           }
           <a routerLink="/shop" class="btn btn-secondary btn-block">Back to Menu</a>
@@ -89,10 +95,19 @@ export class OrderStatusPageComponent implements OnInit, OnDestroy {
     this.pollSub?.unsubscribe();
   }
 
+  /** A Lalamove delivery can fail outright (rejected/canceled on their side) without the order
+   *  itself ever being marked CANCELLED — nothing today auto-cancels the order to match, so this
+   *  is the one case the stepper can't represent as a forward step. */
+  isDeliveryFailed(order: Order): boolean {
+    return order.fulfillmentType === 'DELIVERY'
+      && (order.deliveryStatus === 'REJECTED' || order.deliveryStatus === 'CANCELED');
+  }
+
   /** Context-aware message — combines fulfillment status with payment status so a customer
    *  waiting on GCash verification isn't left wondering why nothing seems to be happening. */
   statusMessage() {
     const order = this.order()!;
+    const isDelivery = order.fulfillmentType === 'DELIVERY';
 
     if (order.status === 'RECEIVED') {
       if (order.paymentStatus === 'PENDING_VERIFICATION') {
@@ -104,8 +119,13 @@ export class OrderStatusPageComponent implements OnInit, OnDestroy {
       return 'Payment confirmed! Queueing your order for preparation.';
     }
     if (order.status === 'PREPARING') return 'Our bakers are baking/brewing your order now.';
-    if (order.status === 'READY') return 'Your order is ready! Pick up at the counter.';
-    if (order.status === 'COMPLETED') return 'Order picked up. Enjoy!';
+    if (order.status === 'READY') {
+      if (!isDelivery) return 'Your order is ready! Pick up at the counter.';
+      return order.deliveryStatus === 'PICKED_UP'
+        ? 'Your rider has your order and is on the way!'
+        : 'A rider has been assigned to your order.';
+    }
+    if (order.status === 'COMPLETED') return isDelivery ? 'Order delivered. Enjoy!' : 'Order picked up. Enjoy!';
     return '';
   }
 }

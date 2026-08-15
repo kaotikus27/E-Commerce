@@ -21,7 +21,11 @@ import { ChibiMascotComponent } from '../../../shared/components/chibi-mascot/ch
           @if (order()!.status === 'CANCELLED') {
             <p class="cancelled-notice">This order was cancelled.{{ order()!.cancelReason ? ' Reason: ' + order()!.cancelReason : '' }}</p>
           } @else {
-            <app-order-status-stepper [status]="order()!.status"></app-order-status-stepper>
+            <app-order-status-stepper
+              [status]="order()!.status"
+              [fulfillmentType]="order()!.fulfillmentType"
+              [deliveryStatus]="order()!.deliveryStatus"
+            ></app-order-status-stepper>
           }
 
           <div class="details">

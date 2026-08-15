@@ -16,5 +16,5 @@ Open, not-yet-scheduled work. Carried forward across sessions — check off and 
 - [ ] No cron/background auto-poll for orders stuck in `ASSIGNING_DRIVER` beyond N minutes — DEC-006 only covers manual/on-demand sync.
 - [ ] Cloudflare quick tunnel (`*.trycloudflare.com`) for the Lalamove webhook is not durable — its URL changes every restart and must be re-registered in the Lalamove sandbox dashboard each time (see `docs/lalamove-webhook-tunnel.md`). A named Cloudflare tunnel would fix this permanently but isn't set up yet.
 - [x] ~~`order.status` (customer tracking stepper) and `deliveryStatus` (Lalamove rider lifecycle) have no auto-sync~~ Auto-advance wired in `syncOrderStatusFromDelivery()` (DEC-010, 2026-08-15).
-- [ ] Stepper still isn't delivery-aware — its labels (`Ready for Pickup`/`Picked Up`) are counter-pickup wording even for delivery orders, which now auto-advance through them via DEC-010 but never show "rider picked it up"/"on the way" distinctly. Considered as part of DEC-010, deliberately deferred as bigger scope.
+- [x] ~~Stepper still isn't delivery-aware~~ Delivery orders now get their own 5-step sequence reflecting Lalamove's real lifecycle (DEC-011, 2026-08-15).
 - [x] ~~`OrderRepository.existsByGcashReference` (added in `f1eb8c7`) is unused~~ Wired into `placeOrder` (DEC-008, 2026-08-15).
