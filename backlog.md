@@ -20,3 +20,4 @@ Open, not-yet-scheduled work. Carried forward across sessions — check off and 
 - [x] ~~`OrderRepository.existsByGcashReference` (added in `f1eb8c7`) is unused~~ Wired into `placeOrder` (DEC-008, 2026-08-15).
 - [ ] Home page "Our Philosophy" section (DEC-015) has a blank image placeholder — the source mockup itself has no image in that slot, so an actual photo/illustration asset is needed from Leo before it can be swapped in.
 - [ ] Testimonials section (Ghibli redesign) still uses placeholder names copied from actual Studio Ghibli characters (Sophie Hatter, Chihiro Ogino) — swap to real customer names once that section is built.
+- [ ] Seeded "Sourdough Loaf" product has no `image` value — blank thumbnail on its product card (home page menu preview and `/shop`). Noticed while redesigning the menu preview section (DEC-016), not caused by it.

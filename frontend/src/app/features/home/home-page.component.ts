@@ -101,10 +101,10 @@ import { FaqAccordionComponent } from '../../shared/components/faq-accordion/faq
     <section class="container featured" id="discover">
       <div class="featured-header">
         <div>
-          <span class="eyebrow">Our Offerings</span>
-          <h2>Discover the Flavors</h2>
+          <span class="eyebrow">Fresh From The Hearth</span>
+          <h2>What's Brewing Today</h2>
         </div>
-        <a routerLink="/shop" class="btn btn-secondary">Full Menu →</a>
+        <a routerLink="/shop" class="btn btn-secondary">View Full Menu →</a>
       </div>
       <div class="grid-responsive">
         @for (p of featured(); track p.id) {
@@ -249,7 +249,7 @@ import { FaqAccordionComponent } from '../../shared/components/faq-accordion/faq
     .faq-section { margin: 0 auto 56px; max-width: 720px; }
 
     @media (min-width: 960px) {
-      .featured .grid-responsive { grid-template-columns: repeat(3, 1fr); }
+      .featured .grid-responsive { grid-template-columns: repeat(4, 1fr); }
     }
   `],
 })
@@ -266,7 +266,7 @@ export class HomePageComponent {
   heroMuted = signal(true);
 
   featured() {
-    return this.productService.products().slice(0, 3);
+    return this.productService.products().slice(0, 4);
   }
 
   goTo(event: Event, link: string) {
