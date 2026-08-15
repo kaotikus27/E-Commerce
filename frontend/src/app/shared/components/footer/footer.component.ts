@@ -1,6 +1,5 @@
-import { Component, inject } from '@angular/core';
+import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { StoreService } from '../../../core/services/store.service';
 
 @Component({
   selector: 'app-footer',
@@ -8,17 +7,12 @@ import { StoreService } from '../../../core/services/store.service';
   imports: [RouterLink],
   template: `
     <footer class="footer">
-      <div class="container footer-grid">
+      <div class="container footer-top">
         <div class="brand-col">
           <img src="assets/logo_bami.jpg" alt="Home Cafe by Bami" class="footer-logo" />
           <p class="muted">A cozy home cafe tucked in Norzagaray, Bulacan. Come for the drinks, stay for the warmth.</p>
         </div>
-        <div>
-          <h4 class="footer-heading">Visit Us</h4>
-          <p class="muted">📍 {{ store.address() }}</p>
-          <p class="muted">🕐 {{ store.todayHoursLabel() }}</p>
-        </div>
-        <div>
+        <div class="follow-col">
           <h4 class="footer-heading">Follow Along</h4>
           <p class="muted">Follow <strong>Home Cafe by Bami</strong> for more tasty content.</p>
           <div class="socials">
@@ -32,23 +26,25 @@ import { StoreService } from '../../../core/services/store.service';
               <svg viewBox="0 0 448 512" fill="currentColor"><path d="M448,209.9a210.1,210.1,0,0,1-122.8-39.3V349.4A162.6,162.6,0,1,1,185,188.3V278.2a74.6,74.6,0,1,0,52.2,71.2V0l88,0a121.2,121.2,0,0,0,1.9,22.2h0A122.2,122.2,0,0,0,381,102.4a121.4,121.4,0,0,0,67,20.1Z"/></svg>
             </a>
           </div>
-          <ul class="links">
-            <li><a routerLink="/contact">Contact Us</a></li>
-            <li><a routerLink="/terms">Terms &amp; Conditions</a></li>
-          </ul>
         </div>
       </div>
-      <div class="container copyright">© 2026 Home by Bami. All rights reserved.</div>
+      <div class="container footer-bottom">
+        <span class="copyright">© 2026 Home by Bami. All rights reserved.</span>
+        <ul class="links">
+          <li><a routerLink="/contact">Contact Us</a></li>
+          <li><a routerLink="/terms">Terms &amp; Conditions</a></li>
+        </ul>
+      </div>
     </footer>
   `,
   styles: [`
     .footer { background: var(--color-text-chocolate); color: var(--color-subdued-pistachio); padding: 40px 0 16px; margin-top: 48px; }
-    .footer-grid { display: grid; gap: 28px; grid-template-columns: 1fr; }
-    @media (min-width: 720px) { .footer-grid { grid-template-columns: repeat(3, 1fr); } }
+    .footer-top { display: grid; gap: 28px; grid-template-columns: 1fr; }
+    @media (min-width: 720px) { .footer-top { grid-template-columns: 1.3fr 1fr; } }
     .footer-logo { height: 40px; width: auto; object-fit: contain; margin-bottom: 12px; border-radius: var(--radius-sm); }
-    .footer-heading { color: var(--color-canvas-oat); }
+    .footer-heading { color: var(--color-canvas-oat); margin: 0 0 8px; }
     .muted { color: var(--color-subdued-pistachio); font-size: 14px; opacity: 0.85; margin: 0 0 6px; }
-    .socials { display: flex; gap: 10px; margin: 10px 0 14px; }
+    .socials { display: flex; gap: 10px; margin: 10px 0 0; }
     .social-icon {
       display: flex; align-items: center; justify-content: center; width: 36px; height: 36px;
       border-radius: 50%; background: rgba(251,248,243,0.1); color: var(--color-subdued-pistachio);
@@ -56,12 +52,14 @@ import { StoreService } from '../../../core/services/store.service';
     }
     .social-icon:hover { background: var(--color-terracotta); color: var(--color-white); }
     .social-icon svg { width: 18px; height: 18px; }
-    ul.links { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
-    ul.links a { font-size: 14px; color: var(--color-subdued-pistachio); }
+    .footer-bottom {
+      display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between;
+      border-top: 1px solid rgba(251,248,243,0.15); margin-top: 32px; padding-top: 16px;
+    }
+    .copyright { font-size: 12px; color: var(--color-subdued-pistachio); opacity: 0.85; }
+    ul.links { list-style: none; padding: 0; margin: 0; display: flex; gap: 20px; }
+    ul.links a { font-size: 13px; color: var(--color-subdued-pistachio); }
     ul.links a:hover { color: var(--color-terracotta); }
-    .copyright { border-top: 1px solid rgba(251,248,243,0.15); margin-top: 24px; padding-top: 16px; font-size: 12px; color: var(--color-subdued-pistachio); opacity: 0.85; }
   `],
 })
-export class FooterComponent {
-  store = inject(StoreService);
-}
+export class FooterComponent {}
