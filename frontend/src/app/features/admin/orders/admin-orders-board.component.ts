@@ -1,6 +1,7 @@
 import { Component, OnDestroy, OnInit, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Subscription, switchMap, timer } from 'rxjs';
 import { AdminOrderService } from '../services/admin-order.service';
 import { AdminOrder } from '../../../core/models/order.model';
 import { ModalComponent } from '../../../shared/components/modal/modal.component';
@@ -211,7 +212,7 @@ const ORIGINAL_TITLE = 'Home by Bami — Admin';
 export class AdminOrdersBoardComponent implements OnInit, OnDestroy {
   orderService = inject(AdminOrderService);
   private notifications = inject(NotificationService);
-  private timer?: ReturnType<typeof setInterval>;
+  private pollSub?: Subscription;
 
   rejecting = signal<AdminOrder | null>(null);
   rejectReason = '';
@@ -274,12 +275,17 @@ export class AdminOrdersBoardComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    this.orderService.loadOrders();
-    this.timer = setInterval(() => this.orderService.loadOrders(), POLL_MS);
+    // timer(0, POLL_MS) fires immediately then every POLL_MS after, covering both the
+    // initial load and the recurring poll in one subscription. switchMap drops a still-
+    // in-flight request if the next tick fires before it resolves, instead of letting
+    // requests pile up the way the previous setInterval-based polling could.
+    this.pollSub = timer(0, POLL_MS).pipe(
+      switchMap(() => this.orderService.fetchOrders())
+    ).subscribe();
   }
 
   ngOnDestroy() {
-    if (this.timer) clearInterval(this.timer);
+    this.pollSub?.unsubscribe();
     if (this.titleTimer) clearTimeout(this.titleTimer);
     document.title = ORIGINAL_TITLE;
   }

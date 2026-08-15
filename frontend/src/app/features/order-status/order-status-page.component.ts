@@ -1,6 +1,7 @@
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { Subscription, switchMap, takeWhile, timer } from 'rxjs';
 import { CheckoutService } from '../../core/services/checkout.service';
 import { StoreService } from '../../core/services/store.service';
 import { Order } from '../../core/models/order.model';
@@ -12,6 +13,11 @@ const POLL_MS = 6000;
  * Polls the backend for live status on an interval so the customer sees the real
  * progression as staff work the order through the admin Live Orders board. In
  * production this would instead subscribe to a WebSocket/STOMP push from Spring Boot.
+ *
+ * Uses timer + switchMap rather than setInterval: switchMap drops a still-in-flight
+ * request if the next tick fires before it resolves, and takeWhile stops the polling
+ * subscription itself once the order reaches a terminal state, instead of manually
+ * clearing an interval from inside the response handler.
  */
 @Component({
   selector: 'app-order-status-page',
@@ -59,7 +65,7 @@ export class OrderStatusPageComponent implements OnInit, OnDestroy {
   checkoutService = inject(CheckoutService);
   store = inject(StoreService);
   order = signal<Order | null>(null);
-  private timer?: ReturnType<typeof setInterval>;
+  private pollSub?: Subscription;
 
   private publicToken: string | null = null;
 
@@ -69,24 +75,18 @@ export class OrderStatusPageComponent implements OnInit, OnDestroy {
     if (last && last.publicToken === this.publicToken) this.order.set(last);
 
     if (this.publicToken) {
-      this.pollStatus();
-      this.timer = setInterval(() => this.pollStatus(), POLL_MS);
+      const token = this.publicToken;
+      this.pollSub = timer(0, POLL_MS).pipe(
+        switchMap(() => this.checkoutService.getOrderStatus(token)),
+        takeWhile(o => !o || (o.status !== 'COMPLETED' && o.status !== 'CANCELLED'), true)
+      ).subscribe(o => {
+        if (o) this.order.set(o);
+      });
     }
   }
 
   ngOnDestroy() {
-    if (this.timer) clearInterval(this.timer);
-  }
-
-  private pollStatus() {
-    if (!this.publicToken) return;
-    this.checkoutService.getOrderStatus(this.publicToken).subscribe(o => {
-      if (!o) return;
-      this.order.set(o);
-      if ((o.status === 'COMPLETED' || o.status === 'CANCELLED') && this.timer) {
-        clearInterval(this.timer);
-      }
-    });
+    this.pollSub?.unsubscribe();
   }
 
   /** Context-aware message — combines fulfillment status with payment status so a customer

@@ -47,15 +47,24 @@ export class AdminOrderService {
   });
 
   loadOrders() {
+    this.fetchOrders().subscribe();
+  }
+
+  /** Same fetch as loadOrders(), but returns the observable so callers (e.g. a polling
+   *  timer using switchMap) can compose it instead of firing a detached subscription. */
+  fetchOrders() {
     this.loading.set(true);
-    this.api.get<AdminOrder[]>('/admin/orders').pipe(
-      tap(() => this.loading.set(false)),
+    return this.api.get<AdminOrder[]>('/admin/orders').pipe(
+      tap(orders => {
+        this.orders.set(orders);
+        this.loading.set(false);
+      }),
       catchError(() => {
         this.loading.set(false);
         this.notifications.error('Could not load orders. Is the backend running?');
         return of<AdminOrder[]>([]);
       })
-    ).subscribe(orders => this.orders.set(orders));
+    );
   }
 
   updateStatus(orderNumber: string, status: OrderStatus, cancelReason?: string) {
