@@ -72,6 +72,32 @@ import { FaqAccordionComponent } from '../../shared/components/faq-accordion/faq
       </div>
     </section>
 
+    <section class="container philosophy" id="philosophy">
+      <span class="eyebrow philosophy-eyebrow">🌿 Our Philosophy 🌿</span>
+      <div class="philosophy-grid">
+        <div class="philosophy-image-placeholder" aria-hidden="true"></div>
+        <div class="philosophy-copy">
+          <h2>Crafted by Hand, Blessed by the Forest</h2>
+          <p>
+            Nestled deep inside the Whispering Pines, Bami's Home Cafe was born from a simple
+            dream: to create a resting place for weary wanderers and local spirits alike. We
+            believe that true magic resides in simple, slowly crafted details.
+          </p>
+          <p>
+            Every bean is freshly ground by hand on vintage brass mills, and every golden, buttery
+            pastry is pulled warm from our stone hearth oven as the forest wakes up. Come warm
+            your hands by our fireplace, listen to the crackle of firewood, and let the outside
+            world fade away.
+          </p>
+          <div class="philosophy-stats">
+            <div class="stat"><strong>100%</strong><span>Organic Flour</span></div>
+            <div class="stat"><strong>Slow</strong><span>Stone Ground Brew</span></div>
+            <div class="stat"><strong>Fresh</strong><span>Baked Hourly</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="container featured" id="discover">
       <div class="featured-header">
         <div>
@@ -188,6 +214,22 @@ import { FaqAccordionComponent } from '../../shared/components/faq-accordion/faq
     .welcome h2 { margin: 0 0 16px; }
     .welcome-copy { color: var(--color-text-muted); line-height: 1.6; margin: 0 0 28px; }
     .welcome-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+
+    .philosophy { margin: 56px auto; }
+    .philosophy-eyebrow { display: block; text-align: center; margin-bottom: 24px; }
+    .philosophy-grid { display: grid; gap: 32px; align-items: center; }
+    .philosophy-image-placeholder {
+      aspect-ratio: 4/3; background: var(--color-subdued-pistachio); border-radius: var(--radius-lg);
+    }
+    .philosophy-copy h2 { margin: 0 0 16px; }
+    .philosophy-copy p { color: var(--color-text-muted); line-height: 1.6; margin: 0 0 16px; }
+    .philosophy-stats { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 24px; }
+    .stat { display: flex; flex-direction: column; gap: 4px; }
+    .stat strong { font-size: 20px; color: var(--color-text-chocolate); }
+    .stat span { font-size: 12px; color: var(--color-terracotta); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+    @media (min-width: 860px) {
+      .philosophy-grid { grid-template-columns: 1fr 1.2fr; }
+    }
 
     .featured { margin: 48px auto 40px; }
     .featured-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }

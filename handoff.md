@@ -35,6 +35,8 @@ canonical: true
 
 **2026-08-15 session (continued, redesign section 2):** Built the "Welcome to Home Cafe by Bami" section per the mockup — eyebrow, heading, copy, and two CTAs ("Explore Our Menu" anchor-scrolls to the existing `#discover` section, "Our Philosophy" points to `#philosophy` which doesn't exist yet). Retired the old `.hero-bar` (Order Now/View Cart/Discover the Flavors) that used to sit under the hero — confirmed "View Cart" was redundant since the persistent header nav bar already has its own cart icon opening the same drawer. Verified live in Chrome. See DEC-014.
 
+**2026-08-15 session (continued, after a power-outage gap — new Claude Code session):** Picked up an in-progress, uncommitted edit left in the working tree from just before the outage: the "Our Philosophy" section (redesign section 3), already written but never verified or committed. Restarted both dev servers (both had gone down in the outage), verified live in Chrome — section renders correctly with its image placeholder (mockup has no image in that slot either, not a missed asset), no console errors, and confirmed the Welcome section's "Our Philosophy" link (DEC-014) now correctly anchor-scrolls to it. Committed as DEC-015. See `backlog.md` for the two follow-up gaps flagged (Philosophy image asset, testimonial placeholder names).
+
 # Current Status
 
 Backend confirmed via direct API calls (prior session): geocoding, address disambiguation, Lalamove quotation/dispatch all working end-to-end. Frontend/UI checkout-delivery flow now also confirmed this session, running locally (backend :8080, frontend :4200):
@@ -103,7 +105,9 @@ Everything else above (DEC-006, the delivery-status sync work) is **not yet comm
 - `frontend/.../home/home-page.component.ts` — hero section rebuilt around `homepage_hero_video.mp4` (click-to-play, autoplay+muted+loop, mute toggle, live store address/hours overlay, repositioned "Order Now" tag doubling as the watermark cover). See DEC-013.
 - `DECISIONS.md` (DEC-013). **Not yet committed** (this batch, alongside the component file above).
 - `frontend/.../home/home-page.component.ts` — added the Welcome section, removed `.hero-bar` and its now-dead styles.
-- `DECISIONS.md` (DEC-014). **Not yet committed** (this batch, alongside the component file above).
+- `DECISIONS.md` (DEC-014). **Committed** (`476ecea`).
+- `frontend/.../home/home-page.component.ts` — added the Philosophy section (eyebrow, heading/copy, stats row, image placeholder), fills in the `#philosophy` anchor.
+- `DECISIONS.md` (DEC-015), `backlog.md` (Philosophy image asset gap, testimonial placeholder names). **Committed this session.**
 
 Prior session: `backend/mvnw` — executable bit fix, committed and pushed as `4692a83`.
 
@@ -131,7 +135,7 @@ Prior session: `backend/mvnw` — executable bit fix, committed and pushed as `4
 2. Once Open Issue 3 is resolved (or ruled out), re-enter store phone/GCash info in Admin → Store Settings — it will now actually persist across restarts (Open Issue 2 fixed).
 3. Consider surfacing `lalamoveOrderId` on the admin order view (see `backlog.md`) so `simulate-lalamove-webhook.js` and the new sync endpoint don't require an H2-console lookup to test against a specific order.
 4. ~~If real (not simulated) end-to-end webhook testing is wanted, set up a public tunnel...~~ **Done (2026-08-15)** — Cloudflare quick tunnel live, new URL registered with Lalamove. Keep the `cloudflared` process running for as long as real sandbox webhook testing is needed; if it's ever restarted, follow `docs/lalamove-webhook-tunnel.md` to get and re-register the new URL.
-5. **Continue the Ghibli-themed home page redesign, section by section.** Hero (DEC-013) and Welcome (DEC-014) are done; next up per the mockup (`frontend/src/assets/home-cafe-by-bami-landing.png`) is the Philosophy section ("Crafted by Hand, Blessed by the Forest" — note its image placeholder is blank in the mockup, an asset gap to flag when picked up), then the menu preview redesign, the Autumn Limited Edition banner, testimonials (placeholder names still need swapping from real Studio Ghibli character names to originals — deferred, not yet done), and the Visit Us/footer sections. Once Philosophy exists, wire the Welcome section's "Our Philosophy" link (currently `#philosophy`, a no-op) to actually scroll there.
+5. **Continue the Ghibli-themed home page redesign, section by section.** Hero (DEC-013), Welcome (DEC-014), and Philosophy (DEC-015) are done; next up per the mockup (`frontend/src/assets/home-cafe-by-bami-landing.png`) is the menu preview redesign, then the Autumn Limited Edition banner, testimonials (placeholder names still need swapping from real Studio Ghibli character names to originals — deferred, not yet done, see `backlog.md`), and the Visit Us/footer sections.
 
 # Risks
 

@@ -18,3 +18,5 @@ Open, not-yet-scheduled work. Carried forward across sessions — check off and 
 - [x] ~~`order.status` (customer tracking stepper) and `deliveryStatus` (Lalamove rider lifecycle) have no auto-sync~~ Auto-advance wired in `syncOrderStatusFromDelivery()` (DEC-010, 2026-08-15).
 - [x] ~~Stepper still isn't delivery-aware~~ Delivery orders now get their own 5-step sequence reflecting Lalamove's real lifecycle (DEC-011, 2026-08-15).
 - [x] ~~`OrderRepository.existsByGcashReference` (added in `f1eb8c7`) is unused~~ Wired into `placeOrder` (DEC-008, 2026-08-15).
+- [ ] Home page "Our Philosophy" section (DEC-015) has a blank image placeholder — the source mockup itself has no image in that slot, so an actual photo/illustration asset is needed from Leo before it can be swapped in.
+- [ ] Testimonials section (Ghibli redesign) still uses placeholder names copied from actual Studio Ghibli characters (Sophie Hatter, Chihiro Ogino) — swap to real customer names once that section is built.
