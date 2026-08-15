@@ -17,6 +17,54 @@ was found, and how (or whether) it was fixed.
 
 ---
 
+## [BUG] Customer Order Tracking Stepper Not Advancing (ORD-TRACK-089)
+
+- **Opened:** 2026-08-15
+- **Status:** root-caused, not fixed (logged only per request — no code change yet)
+- **Symptom:** Ticket ORD-TRACK-089 reported the customer-facing order tracking stepper
+  (`Order Received → Preparing → Ready for Pickup → Picked Up`) never advancing after an admin
+  updates order status, requiring a hard refresh. Ticket hypothesized missing WebSocket/STOMP
+  broadcast (`SimpMessagingTemplate`) and Angular subscription bugs. Reported against a specific
+  order, `ORD-193396`.
+- **Investigation:**
+  - `grep`'d the entire backend and frontend for `WebSocket|STOMP|SimpMessaging` — **zero
+    matches** except a comment. There is no WebSocket infrastructure in this codebase at all, so
+    the ticket's entire root-cause section (missing `convertAndSend`, unsubscribed STOMP topic,
+    DTO enum mismatch) doesn't apply — nothing broke, because nothing like that was ever built.
+  - Read `frontend/src/app/features/order-status/order-status-page.component.ts` — it already
+    polls `GET /api/v1/orders/{publicToken}` every 6s (`POLL_MS = 6000`) via plain REST, and its
+    own comment says this is deliberate: *"In production this would instead subscribe to a
+    WebSocket/STOMP push"*. So live-update-without-refresh already works by design; "not
+    real-time" was a false lead.
+  - Queried `ORD-193396` directly via the H2 console (admin REST API returned `403`, no
+    credentials on hand): `STATUS = PREPARING`, `DELIVERY_STATUS = PICKED_UP`,
+    `DRIVER_NAME = TestDriver 34567`, `PUBLIC_TOKEN = 057b2e72-387f-473c-b1e3-f6bb57a2c0b0`. The
+    database itself says `PREPARING` — this is not a stale-poll/cache artifact; a hard refresh
+    would show the same value.
+  - Read `OrderService.java` — `order.status` (the enum the stepper renders,
+    `RECEIVED/PREPARING/READY/COMPLETED`) is only ever mutated by an explicit admin
+    status-update call (`order.setStatus(status)` off the Live Orders board). Nothing in the
+    Lalamove webhook/sync path (`applyDeliveryWebhookUpdate`, `syncDeliveryStatus`) touches
+    `order.status` — it only writes `deliveryStatus`. Confirmed via
+    `order-status-stepper.component.ts`: the stepper's `currentIndex` is computed purely from
+    `status: OrderStatus`, with no awareness of `deliveryStatus` at all.
+- **Root cause:** `order.status` (customer stepper) and `deliveryStatus` (Lalamove rider
+  lifecycle) are two independent fields with no auto-sync between them. For `ORD-193396`, the
+  rider already picked up the order (`deliveryStatus = PICKED_UP`) but no admin has clicked
+  "Mark Ready" yet, so `order.status` is still sitting at `PREPARING` — genuinely, not due to any
+  push/polling defect. (Open Issue 7's gate on "Mark Ready" is already satisfied for this order —
+  driver is assigned — so it's clickable right now.)
+- **Secondary gap noted, not yet actioned:** even once `order.status` is advanced, the stepper's
+  `Ready for Pickup` / `Picked Up` labels are counter-pickup wording and don't reflect Lalamove's
+  own delivery lifecycle (`ASSIGNING_DRIVER → ON_GOING → PICKED_UP → COMPLETED`) — a delivery
+  customer never sees "rider picked it up" / "on the way" distinctly from a counter-pickup
+  customer's steps. Not part of this ticket's scope; worth its own ticket if wanted.
+- **Fix:** None applied yet — logged per Leo's request. Two independent follow-ups exist if
+  pursued: (1) manually advance `ORD-193396` via the admin board so the customer sees progress,
+  (2) design a real fix — either auto-advance `order.status` off `deliveryStatus` transitions, or
+  make the stepper delivery-aware, so this doesn't require a manual click going forward.
+
+---
 
 # [BUG] Order Status Stuck in `ASSIGNING_DRIVER` Due to Unhandled Lalamove Webhook Event in Spring Boot Service
 
