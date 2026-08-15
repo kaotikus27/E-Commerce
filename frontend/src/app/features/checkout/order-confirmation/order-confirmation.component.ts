@@ -46,7 +46,7 @@ import { ChibiMascotComponent } from '../../../shared/components/chibi-mascot/ch
           </div>
 
           <div class="actions">
-            <a [routerLink]="['/order-status', order()!.id]" class="btn btn-primary btn-block">Track Order</a>
+            <a [routerLink]="['/order-status', order()!.publicToken]" class="btn btn-primary btn-block">Track Order</a>
             <a routerLink="/shop" class="btn btn-secondary btn-block">Order More</a>
           </div>
         </div>
@@ -75,12 +75,12 @@ export class OrderConfirmationComponent implements OnInit {
   order = signal<Order | null>(null);
 
   ngOnInit() {
-    const id = this.route.snapshot.paramMap.get('id');
+    const token = this.route.snapshot.paramMap.get('id');
     const last = this.checkoutService.lastOrder();
-    if (last && last.id === id) {
+    if (last && last.publicToken === token) {
       this.order.set(last);
-    } else if (id) {
-      this.checkoutService.getOrderStatus(id).subscribe(o => this.order.set(o ?? null));
+    } else if (token) {
+      this.checkoutService.getOrderStatus(token).subscribe(o => this.order.set(o ?? null));
     }
   }
 }

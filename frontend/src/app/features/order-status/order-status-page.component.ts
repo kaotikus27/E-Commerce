@@ -61,14 +61,14 @@ export class OrderStatusPageComponent implements OnInit, OnDestroy {
   order = signal<Order | null>(null);
   private timer?: ReturnType<typeof setInterval>;
 
-  private orderId: string | null = null;
+  private publicToken: string | null = null;
 
   ngOnInit() {
-    this.orderId = this.route.snapshot.paramMap.get('id');
+    this.publicToken = this.route.snapshot.paramMap.get('id');
     const last = this.checkoutService.lastOrder();
-    if (last && last.id === this.orderId) this.order.set(last);
+    if (last && last.publicToken === this.publicToken) this.order.set(last);
 
-    if (this.orderId) {
+    if (this.publicToken) {
       this.pollStatus();
       this.timer = setInterval(() => this.pollStatus(), POLL_MS);
     }
@@ -79,8 +79,8 @@ export class OrderStatusPageComponent implements OnInit, OnDestroy {
   }
 
   private pollStatus() {
-    if (!this.orderId) return;
-    this.checkoutService.getOrderStatus(this.orderId).subscribe(o => {
+    if (!this.publicToken) return;
+    this.checkoutService.getOrderStatus(this.publicToken).subscribe(o => {
       if (!o) return;
       this.order.set(o);
       if ((o.status === 'COMPLETED' || o.status === 'CANCELLED') && this.timer) {

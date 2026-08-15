@@ -425,7 +425,7 @@ export class CheckoutPageComponent implements OnInit, OnDestroy {
         this.cart.clear();
         this.delivery.clear();
         this.notifications.success('Order placed!');
-        this.router.navigate(['/order-confirmation', order.id]);
+        this.router.navigate(['/order-confirmation', order.publicToken]);
         this.submitting.set(false);
       },
       error: () => {

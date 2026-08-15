@@ -4,7 +4,7 @@ type: handoff
 status: active
 owner: "Leo"
 created: 2026-08-11
-updated: 2026-08-11
+updated: 2026-08-15
 ai_access: internal
 ai_generated: true
 review_status: draft
@@ -15,7 +15,9 @@ canonical: true
 
 ~~Manually verify the checkout delivery flow end-to-end~~ **Done** (prior session) — verified with `claude-in-chrome` browser automation, cross-checked against actual network responses rather than trusting rendered DOM alone.
 
-**This session:** attempted to reproduce Open Issue 3 (Admin → Store Settings silently fails to render) live — could not reproduce it across ~8 different navigation paths (fresh login, every tab-to-tab transition, modal-open-then-nav, rapid clicking, hard reload). Deferred to when the user is on the Mac machine, where it may be more reproducible or may turn out to already be fixed. Then fixed Open Issues 2 and 4 instead (H2 persistence, OCR path). Then Leo filed a new bug (`docs/docsdebug.md`, "LALA-INTEG-044" — Live Orders stuck at `ASSIGNING_DRIVER`) and wrote `PROPOSAL.md` proposing a fix; reviewed the proposal (agreed with the direction, corrected two things in it), implemented the backend half, then wired up and verified the frontend "Refresh Delivery Status" button live in the real browser — LALA-INTEG-044 is now closed. See DEC-006 / Open Issue 10.
+**2026-08-13 session:** attempted to reproduce Open Issue 3 (Admin → Store Settings silently fails to render) live — could not reproduce it across ~8 different navigation paths (fresh login, every tab-to-tab transition, modal-open-then-nav, rapid clicking, hard reload). Deferred to when the user is on the Mac machine, where it may be more reproducible or may turn out to already be fixed. Then fixed Open Issues 2 and 4 instead (H2 persistence, OCR path). Then Leo filed a new bug (`docs/docsdebug.md`, "LALA-INTEG-044" — Live Orders stuck at `ASSIGNING_DRIVER`) and wrote `PROPOSAL.md` proposing a fix; reviewed the proposal (agreed with the direction, corrected two things in it), implemented the backend half, then wired up and verified the frontend "Refresh Delivery Status" button live in the real browser — LALA-INTEG-044 is now closed. See DEC-006 / Open Issue 10.
+
+**2026-08-15 session:** Leo had separately pushed `f1eb8c7` (groundwork: added `Order.publicToken` + the order-number collision fix, but deliberately left the public tracking endpoint and frontend still keyed on `orderNumber`). Finished wiring it: public GET now resolves by `publicToken` only, `placeOrder`'s response switched to the redacted `publicView()` (closing a pre-existing leak where the guest checkout response returned `gcashReference`/`receiptImagePath`/`ocrExtractedRef` unredacted), and the frontend (checkout → confirmation → track) now routes/polls by token. See DEC-007. Then also wired up `existsByGcashReference` (also added in `f1eb8c7` but unused) so a GCash order whose OCR-extracted reference was already used by a prior order gets rejected with `409` at placement, instead of silently succeeding. See DEC-008.
 
 # Current Status
 
@@ -28,7 +30,17 @@ Backend confirmed via direct API calls (prior session): geocoding, address disam
 
 See `DECISIONS.md` for the full log. Most recent: use a per-machine local JVM trust store file (via `MAVEN_OPTS`) instead of touching the system trust store, to work behind a TLS-inspecting corporate proxy.
 
-# Files Changed (most recent session)
+# Files Changed (2026-08-15 session)
+
+- `backend/src/main/java/com/bakery/order/OrderController.java` — public GET path variable renamed `orderNumber` → `publicToken`.
+- `backend/src/main/java/com/bakery/order/OrderService.java` — `getOrderStatus` now looks up via `findByPublicToken`, returns `publicView()`; `placeOrder`'s response also switched `from()` → `publicView()`; `placeOrder` now rejects (`409`) a GCash order whose OCR-extracted reference already exists via `existsByGcashReference`.
+- `frontend/src/app/core/models/order.model.ts` — added `publicToken` to the `Order` interface.
+- `frontend/src/app/core/services/checkout.service.ts` — `getOrderStatus` documented as taking a `publicToken`.
+- `frontend/.../checkout-page.component.ts`, `.../order-confirmation.component.ts`, `.../order-status-page.component.ts` — route/poll/"Track Order" link all switched from `order.id` to `order.publicToken`. Displayed "Order #…" text unchanged (still the human-readable `id`/orderNumber).
+- `DECISIONS.md` (DEC-007, DEC-008), `backlog.md` (checked off the `existsByGcashReference` item) — updated to reflect the above.
+- Verified live: restarted the file-backed H2 backend twice (no schema migration needed either time, `public_token` column already existed from `f1eb8c7`). First restart: confirmed old `orderNumber` public lookups now 404 while `publicToken` lookups resolve, confirmed a manually-set `gcashReference` is stripped from the public response but visible via the admin endpoint, and confirmed the full frontend flow (order confirmation → Track Order → status polling) in a real Chrome tab, checking actual network requests rather than trusting rendered DOM. Second restart (after adding the duplicate-reference check): reused an existing receipt image (same OCR'd reference as an already-placed order) → got the expected `409`; placed another order with a synthetically-generated receipt image carrying a fresh, never-seen reference number → got a normal `201`, proving the check doesn't false-positive block legitimate new references. All synthetic test orders created during this session's testing (`ORD-486426`, `ORD-702117`) were cancelled via the admin API afterward to keep the live orders board clean (the H2 DB is file-persistent now, per DEC-003, so it no longer clears itself on restart).
+
+# Files Changed (2026-08-13 session)
 
 - `backend/src/main/resources/application.yml` — H2 datasource switched from `jdbc:h2:mem:bakerydb` to `jdbc:h2:file:./data/bakerydb`; `app.ocr.tessdata-path` switched to `${TESSDATA_PATH:<old hardcoded Windows path>}`. **Committed and pushed** (`e483ef1`).
 - `.gitignore` — added `backend/data/` (the new H2 file-DB directory). **Committed and pushed** (`e483ef1`).

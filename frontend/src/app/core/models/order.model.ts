@@ -49,9 +49,13 @@ export interface OrderItemSummary {
   lineTotal: number;
 }
 
-/** Mirrors the backend's OrderResponseDto (id = orderNumber) — the real shape of a placed/fetched order. */
+/** Mirrors the backend's OrderResponseDto (id = orderNumber, human-readable, display only) —
+ *  the real shape of a placed/fetched order. Use publicToken, not id, for any tracking URL or
+ *  status lookup — see Order.publicToken on the backend. */
 export interface Order {
   id: string;
+  /** Unguessable tracking id — use this in order-confirmation/order-status URLs, never id. */
+  publicToken: string;
   status: OrderStatus;
   guestName?: string;
   guestPhone?: string;

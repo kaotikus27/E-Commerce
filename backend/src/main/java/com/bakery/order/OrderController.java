@@ -22,8 +22,8 @@ public class OrderController {
         return ResponseEntity.status(HttpStatus.CREATED).body(orderService.placeOrder(request, receiptImage));
     }
 
-    @GetMapping("/{orderNumber}")
-    public OrderResponseDto getOrder(@PathVariable String orderNumber) {
-        return orderService.getOrderStatus(orderNumber);
+    @GetMapping("/{publicToken}")
+    public OrderResponseDto getOrder(@PathVariable String publicToken) {
+        return orderService.getOrderStatus(publicToken);
     }
 }

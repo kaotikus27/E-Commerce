@@ -53,8 +53,9 @@ export class CheckoutService {
     );
   }
 
-  getOrderStatus(orderId: string) {
-    return this.api.get<Order>(`/orders/${orderId}`).pipe(
+  /** publicToken, not orderNumber — the backend's public GET only resolves by publicToken. */
+  getOrderStatus(publicToken: string) {
+    return this.api.get<Order>(`/orders/${publicToken}`).pipe(
       catchError(() => of(this.lastOrder()))
     );
   }

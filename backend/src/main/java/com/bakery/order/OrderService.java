@@ -78,6 +78,11 @@ public class OrderService {
 
         if (isGcash) {
             applyReceiptImage(order, receiptImage);
+            String gcashReference = order.getGcashReference();
+            if (gcashReference != null && !gcashReference.isBlank() && orderRepository.existsByGcashReference(gcashReference)) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "This GCash reference has already been used for another order. If you believe this is a mistake, please contact us.");
+            }
         }
 
         BigDecimal deliveryFee = BigDecimal.ZERO;
@@ -124,13 +129,15 @@ public class OrderService {
         order.setTotal(total);
 
         Order saved = orderRepository.save(order);
-        return OrderResponseDto.from(saved);
+        return OrderResponseDto.publicView(saved);
     }
 
-    public OrderResponseDto getOrderStatus(String orderNumber) {
-        Order order = orderRepository.findByOrderNumber(orderNumber)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order " + orderNumber + " not found"));
-        return OrderResponseDto.from(order);
+    /** Public/unauthenticated lookup — keyed by publicToken, not orderNumber, so the short
+     *  human-readable reference printed on receipts is never itself a valid lookup key. */
+    public OrderResponseDto getOrderStatus(String publicToken) {
+        Order order = orderRepository.findByPublicToken(publicToken)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+        return OrderResponseDto.publicView(order);
     }
 
     public List<OrderResponseDto> listAllOrders() {
