@@ -282,8 +282,36 @@ public class OrderService {
             if (driverPhone != null) order.setDriverPhone(driverPhone);
             if (driverPlateNumber != null) order.setDriverPlateNumber(driverPlateNumber);
             if (shareLink != null) order.setTrackingShareLink(shareLink);
+            syncOrderStatusFromDelivery(order);
             orderRepository.save(order);
         });
+    }
+
+    /** Closes the gap behind ORD-TRACK-089 (see docs/docsdebug.md, DEC-010): order.status (what
+     *  the customer tracker renders) and deliveryStatus (Lalamove's own rider lifecycle) are
+     *  independent fields, and nothing previously advanced the former when the latter changed —
+     *  an admin had to remember to click "Mark Ready"/"Mark Completed" even after the rider had
+     *  already picked up or delivered the order. Re-evaluated on every call (webhook or manual
+     *  sync), so it's naturally idempotent and self-heals any order that got stuck before this
+     *  existed, the next time its delivery status is synced — no backfill needed. Pickup orders,
+     *  and any order already COMPLETED/CANCELLED, are left untouched. */
+    private void syncOrderStatusFromDelivery(Order order) {
+        if (order.getFulfillmentType() != FulfillmentType.DELIVERY) return;
+        if (order.getStatus() == OrderStatus.COMPLETED || order.getStatus() == OrderStatus.CANCELLED) return;
+
+        if (order.getDeliveryStatus() == DeliveryStatus.COMPLETED) {
+            order.setStatus(OrderStatus.COMPLETED);
+            return;
+        }
+
+        // Same condition admin-orders-board.component.ts's canMarkReady() already uses to unlock
+        // the manual "Mark Ready" button — a driver being on the way is exactly what "ready" means.
+        boolean riderComing = order.getDriverName() != null
+                || order.getDeliveryStatus() == DeliveryStatus.ON_GOING
+                || order.getDeliveryStatus() == DeliveryStatus.PICKED_UP;
+        if (order.getStatus() == OrderStatus.PREPARING && riderComing) {
+            order.setStatus(OrderStatus.READY);
+        }
     }
 
     /** Admin manually attaches/replaces a receipt screenshot during verification — e.g. the

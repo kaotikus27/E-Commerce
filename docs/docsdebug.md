@@ -20,7 +20,7 @@ was found, and how (or whether) it was fixed.
 ## [BUG] Customer Order Tracking Stepper Not Advancing (ORD-TRACK-089)
 
 - **Opened:** 2026-08-15
-- **Status:** root-caused, not fixed (logged only per request — no code change yet)
+- **Status:** fixed (2026-08-15, DEC-010)
 - **Symptom:** Ticket ORD-TRACK-089 reported the customer-facing order tracking stepper
   (`Order Received → Preparing → Ready for Pickup → Picked Up`) never advancing after an admin
   updates order status, requiring a hard refresh. Ticket hypothesized missing WebSocket/STOMP
@@ -59,10 +59,21 @@ was found, and how (or whether) it was fixed.
   own delivery lifecycle (`ASSIGNING_DRIVER → ON_GOING → PICKED_UP → COMPLETED`) — a delivery
   customer never sees "rider picked it up" / "on the way" distinctly from a counter-pickup
   customer's steps. Not part of this ticket's scope; worth its own ticket if wanted.
-- **Fix:** None applied yet — logged per Leo's request. Two independent follow-ups exist if
-  pursued: (1) manually advance `ORD-193396` via the admin board so the customer sees progress,
-  (2) design a real fix — either auto-advance `order.status` off `deliveryStatus` transitions, or
-  make the stepper delivery-aware, so this doesn't require a manual click going forward.
+- **Fix:** `ORD-193396` was manually advanced the same session it was reported (`PREPARING` →
+  `READY`) so the customer saw progress immediately. Then, separately, Leo brought an SSE-based
+  push architecture proposal for live order updates generally; reviewed it (see DEC-009 — declined
+  in favor of a cheaper RxJS polling upgrade, since SSE alone wouldn't have fixed this bug anyway).
+  Finally implemented the real fix: `syncOrderStatusFromDelivery(Order)` in `OrderService.java`,
+  called from `applyDeliveryWebhookUpdate()` (the shared choke point for both the real webhook and
+  the manual sync button), auto-advances `order.status` to `READY` the moment a driver is assigned
+  or `deliveryStatus` reaches `ON_GOING`/`PICKED_UP` (same condition `canMarkReady()` already
+  gated the manual button on), and to `COMPLETED` the moment `deliveryStatus` reaches `COMPLETED`.
+  Delivery orders only; pickup orders and already-terminal orders are untouched. See DEC-010 for
+  the full design rationale and live verification (restarted the backend, used
+  `simulate-lalamove-webhook.js` to send a real signed `DRIVER_ASSIGNED` event against a real
+  `PREPARING` order, confirmed `order.status` flipped to `READY`; then simulated
+  `ON_GOING → PICKED_UP → COMPLETED`, confirmed `order.status` followed to `COMPLETED`). The
+  stepper's delivery-unaware labels (Open Issue 11 follow-up) remain a separate, deferred item.
 
 ---
 
