@@ -56,12 +56,19 @@ import { FaqAccordionComponent } from '../../shared/components/faq-accordion/faq
              than a patch that only exists to hide something. -->
         <a routerLink="/shop" class="hero-order-tag">Order Now →</a>
       </div>
-      <div class="hero-bar">
-        <div class="hero-actions">
-          <a routerLink="/shop" class="btn btn-primary">Order Now →</a>
-          <button class="btn btn-secondary hero-btn-secondary" (click)="cart.toggleDrawer()">View Cart</button>
-        </div>
-        <a href="#discover" class="scroll-cue">Discover the Flavors</a>
+    </section>
+
+    <section class="container welcome">
+      <span class="eyebrow">🍂 Sipping Magical Nostalgia 🍂</span>
+      <h2>Welcome to Home Cafe by Bami</h2>
+      <p class="welcome-copy">
+        Where every cup tells a story and every pastry is baked with love. Nestled in our cozy,
+        moss-soft woodland cottage, discover a peaceful haven crafted from rustic timber, glowing
+        glass lanterns, and the smell of freshly ground fairy beans.
+      </p>
+      <div class="welcome-actions">
+        <a href="#discover" class="btn btn-primary">Explore Our Menu →</a>
+        <a href="#philosophy" class="btn btn-secondary">Our Philosophy</a>
       </div>
     </section>
 
@@ -174,16 +181,13 @@ import { FaqAccordionComponent } from '../../shared/components/faq-accordion/faq
     }
     .hero-order-tag:hover { background: var(--color-terracotta-dark); }
 
-    .hero-bar {
-      background: var(--color-text-chocolate); padding: 20px 16px; margin-top: 16px;
-      border-radius: var(--radius-md);
-      display: flex; flex-direction: column; align-items: center; gap: 10px;
-    }
     .eyebrow { color: var(--color-terracotta); font-weight: 700; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; }
-    .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
-    .hero-btn-secondary { background: transparent; color: var(--color-white); border-color: var(--color-white); }
-    .hero-btn-secondary:hover { background: rgba(255,255,255,0.12); }
-    .scroll-cue { display: inline-block; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.7); font-weight: 700; }
+
+    .welcome { margin: 48px auto; max-width: 720px; text-align: center; }
+    .welcome .eyebrow { display: block; margin-bottom: 12px; }
+    .welcome h2 { margin: 0 0 16px; }
+    .welcome-copy { color: var(--color-text-muted); line-height: 1.6; margin: 0 0 28px; }
+    .welcome-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
 
     .featured { margin: 48px auto 40px; }
     .featured-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
