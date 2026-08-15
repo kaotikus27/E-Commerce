@@ -158,6 +158,34 @@ import { FaqAccordionComponent } from '../../shared/components/faq-accordion/faq
       <app-faq-accordion [faqs]="faqService.faqs()"></app-faq-accordion>
     </section>
 
+    <section class="container visit">
+      <span class="eyebrow visit-eyebrow">Find Your Way</span>
+      <h2>Visit Our Haven</h2>
+      <div class="visit-grid">
+        <div class="visit-row">
+          <span class="visit-icon">📍</span>
+          <div>
+            <strong>Our Cottage</strong>
+            <p>{{ store.address() }}</p>
+          </div>
+        </div>
+        <div class="visit-row">
+          <span class="visit-icon">🕐</span>
+          <div>
+            <strong>Gathering Hours</strong>
+            <p>{{ store.isOpen() ? 'Open Now' : 'Closed Now' }} · Today {{ store.todayHoursLabel() }}</p>
+          </div>
+        </div>
+        <div class="visit-row">
+          <span class="visit-icon">✉️</span>
+          <div>
+            <strong>Spirited Inquiry</strong>
+            <p>hello&#64;homebybami.example{{ store.phone() ? ' · ' + store.phone() : '' }}</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <app-item-modal [product]="activeProduct()" (close)="activeProduct.set(null)" (addedToCart)="onAdded($event)"></app-item-modal>
   `,
   styles: [`
@@ -280,6 +308,18 @@ import { FaqAccordionComponent } from '../../shared/components/faq-accordion/faq
     .quote-role { display: block; margin-top: 2px; font-weight: 600; color: var(--color-text-muted); font-size: 12px; text-transform: none; }
 
     .faq-section { margin: 0 auto 56px; max-width: 720px; }
+
+    .visit { margin: 0 auto 56px; max-width: 640px; text-align: center; }
+    .visit-eyebrow { display: block; margin-bottom: 8px; }
+    .visit h2 { margin: 0 0 32px; }
+    .visit-grid { display: grid; gap: 20px; text-align: left; }
+    .visit-row { display: flex; gap: 14px; align-items: flex-start; }
+    .visit-icon { font-size: 20px; line-height: 1.4; }
+    .visit-row strong { display: block; font-size: 14px; }
+    .visit-row p { margin: 2px 0 0; color: var(--color-text-muted); font-size: 14px; }
+    @media (min-width: 640px) {
+      .visit-grid { grid-template-columns: repeat(3, 1fr); }
+    }
 
     @media (min-width: 960px) {
       .featured .grid-responsive { grid-template-columns: repeat(4, 1fr); }
