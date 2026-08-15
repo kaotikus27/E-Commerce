@@ -17,6 +17,49 @@ was found, and how (or whether) it was fixed.
 
 ---
 
+## [BUG] Static info pages (About/Contact/FAQ/Terms) and the Shop product list render blank on first paint
+
+- **Opened:** 2026-08-15
+- **Status:** root-caused (partially), NOT fixed — deferred pending owner input
+- **Symptom:** Discovered during a full-site regression pass after the Ghibli home page redesign
+  (unrelated to that work — see Investigation). Navigating to `/about`, `/contact`, `/faq`, or
+  `/terms` (all rendered via the shared `InfoPageComponent`) shows the page shell (header, footer)
+  but the `<h1>` title and the entire content body are blank — not missing data, not an error, just
+  never painted. Separately, `/shop` (`MenuPageComponent`) shows the hero banner and category
+  filter but zero product cards, no loading skeleton, and no "no results" message — the entire
+  `@if/@else if/@else` block silently never renders any of its three branches.
+- **Investigation:** Confirmed via `git log` that `info-page.component.ts` (and its
+  About/Contact/FAQ/Terms callers) have been untouched since the initial commit — this is not a
+  regression from today's redesign work. Confirmed via direct component inspection
+  (`ng.getComponent()`) that the affected components' `@Input()` properties (e.g. `title`) *do*
+  correctly receive their real values ("Contact Us", etc.) — the data is right, only the DOM never
+  gets a first paint. Forcing change detection manually (`ng.applyChanges()` from Angular
+  DevTools' bridge) does immediately paint the correct content, proving the template itself is
+  fine and the bug is that **the component's first change-detection pass after route navigation
+  never runs** — not a template bug, not a data-loading bug. Tried the standard fix (inject
+  `ChangeDetectorRef`, call `detectChanges()` in `ngOnInit`) — did not work; a debug `console.log`
+  placed inside that same `ngOnInit` never fired at all, meaning the lifecycle hook itself isn't
+  running, not just that the forced detection was mistimed. Ruled out environment noise: reproduced
+  identically after (a) restarting the frontend dev server fresh (this project has a known history
+  of the dev server silently going stale, per DEC-011) and (b) building and serving the actual
+  production bundle (`ng build --configuration production`, served via a standalone static
+  server) — same blank-render behavior in a completely clean, non-HMR environment, so this is a
+  real application bug, not a dev-server/HMR artifact. Both affected component families
+  (`InfoPageComponent` and `MenuPageComponent`) are lazy-loaded via `loadComponent()`, whereas the
+  Home page (which renders correctly) is eagerly loaded — the working theory is this is specific to
+  lazy-loaded standalone routes not properly triggering Angular's initial post-navigation change
+  detection, but this is not yet confirmed as the root cause.
+- **Root cause:** Not fully confirmed. Leading theory: lazy-loaded route activation isn't
+  triggering Angular's first change-detection pass reliably in this app's Zone.js configuration.
+  Needs more investigation to pin down precisely (possibly a Zone/Router interaction specific to
+  Angular 17.3, or something about how `provideRouter`/`provideZoneChangeDetection` are configured
+  in `app.config.ts`).
+- **Fix:** None applied yet — reverted the attempted `ChangeDetectorRef` fix since it didn't
+  actually work, so `info-page.component.ts` is back to its original (broken) state. Flagged to
+  Leo for a decision on priority/scope before investing more time.
+
+---
+
 ## [BUG] Customer Order Tracking Stepper Not Advancing (ORD-TRACK-089)
 
 - **Opened:** 2026-08-15
