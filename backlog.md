@@ -14,4 +14,5 @@ Open, not-yet-scheduled work. Carried forward across sessions — check off and 
 - [ ] Build Rail roadmap artifact update (carried over from an earlier session, still untouched).
 - [ ] `lalamoveOrderId` isn't exposed by any admin API/UI — the only way to look it up today is a raw H2-console SQL query (see `backend/scripts/simulate-lalamove-webhook.js` header for the exact steps). Worth surfacing on the admin order view.
 - [ ] No cron/background auto-poll for orders stuck in `ASSIGNING_DRIVER` beyond N minutes — DEC-006 only covers manual/on-demand sync.
+- [ ] Cloudflare quick tunnel (`*.trycloudflare.com`) for the Lalamove webhook is not durable — its URL changes every restart and must be re-registered in the Lalamove sandbox dashboard each time (see `docs/lalamove-webhook-tunnel.md`). A named Cloudflare tunnel would fix this permanently but isn't set up yet.
 - [x] ~~`OrderRepository.existsByGcashReference` (added in `f1eb8c7`) is unused~~ Wired into `placeOrder` (DEC-008, 2026-08-15).
