@@ -64,20 +64,69 @@ import { DeliveryMapComponent } from '../delivery-map/delivery-map.component';
               @if (fulfillmentType === 'DELIVERY') {
                 <div class="delivery-box">
                   <div class="field">
-                    <label for="delivery-address">Search Subdivision / Landmark / Barangay *</label>
-                    <textarea id="delivery-address" [(ngModel)]="deliveryAddress" name="deliveryAddress" rows="2"
-                      placeholder="e.g. Tokyo Liquor House, Sarmiento Homes, SJDM, Bulacan"
-                      (ngModelChange)="onAddressChanged()"></textarea>
-                    <small class="address-hint">💡 Used to pinpoint your general location and calculate the delivery fee. You can also paste a Google Maps link instead of typing an address.</small>
+                    <label for="delivery-house-unit">House / Unit / Building No. *</label>
+                    <input id="delivery-house-unit" [(ngModel)]="deliveryHouseUnit" name="deliveryHouseUnit"
+                      placeholder="e.g. Blk 18 Lot 16, Unit 2B"
+                      (ngModelChange)="onDeliveryUnitFieldChanged()" />
                   </div>
                   <div class="field">
-                    <label for="delivery-unit-details">House/Unit No., Block &amp; Lot, Gate Details *</label>
-                    <textarea id="delivery-unit-details" [(ngModel)]="deliveryUnitDetails" name="deliveryUnitDetails" rows="2"
-                      placeholder="e.g. Blk 18 Lot 16 Phase 5, North Gate, Red Door"
-                      (ngModelChange)="onUnitDetailsChanged()"></textarea>
+                    <label for="delivery-street">Street Name</label>
+                    <input id="delivery-street" [(ngModel)]="deliveryStreet" name="deliveryStreet"
+                      placeholder="e.g. Sampaguita Street"
+                      (ngModelChange)="onDeliveryFieldChanged()" />
+                  </div>
+                  <div class="field">
+                    <label for="delivery-subdivision">Subdivision / Village / Phase</label>
+                    <input id="delivery-subdivision" [(ngModel)]="deliverySubdivision" name="deliverySubdivision"
+                      placeholder="e.g. Sarmiento Homes, Phase 5"
+                      (ngModelChange)="onDeliveryFieldChanged()" />
+                  </div>
+                  <div class="field-row field-row-2">
+                    <div class="field">
+                      <label for="delivery-barangay">Barangay *</label>
+                      <input id="delivery-barangay" [(ngModel)]="deliveryBarangay" name="deliveryBarangay"
+                        placeholder="e.g. Tigbe"
+                        (ngModelChange)="onDeliveryFieldChanged()" />
+                    </div>
+                    <div class="field">
+                      <label for="delivery-city">City / Municipality *</label>
+                      <input id="delivery-city" [(ngModel)]="deliveryCity" name="deliveryCity"
+                        placeholder="e.g. Norzagaray"
+                        (ngModelChange)="onDeliveryFieldChanged()" />
+                    </div>
+                  </div>
+                  <div class="field-row field-row-2">
+                    <div class="field">
+                      <label for="delivery-province">Province</label>
+                      <input id="delivery-province" [(ngModel)]="deliveryProvince" name="deliveryProvince"
+                        placeholder="e.g. Bulacan"
+                        (ngModelChange)="onDeliveryFieldChanged()" />
+                    </div>
+                    <div class="field">
+                      <label for="delivery-zip">Zip Code</label>
+                      <input id="delivery-zip" [(ngModel)]="deliveryZip" name="deliveryZip"
+                        placeholder="e.g. 3013"
+                        (ngModelChange)="onDeliveryFieldChanged()" />
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label for="delivery-landmark">Delivery Notes / Landmark</label>
+                    <textarea id="delivery-landmark" [(ngModel)]="deliveryLandmarkNotes" name="deliveryLandmarkNotes" rows="2"
+                      placeholder="e.g. Near the red gate, next to the tall pine tree"
+                      (ngModelChange)="onDeliveryUnitFieldChanged()"></textarea>
                     <small class="address-hint">💡 Exact rider instructions — not used for the fee, just to find your door.</small>
                     @if (unitDetailsError()) { <span class="field-error">{{ unitDetailsError() }}</span> }
                   </div>
+                  <details class="maps-link-toggle">
+                    <summary>Have a Google Maps link instead?</summary>
+                    <div class="field">
+                      <label for="delivery-maps-link">Paste it here</label>
+                      <input id="delivery-maps-link" [(ngModel)]="deliveryMapsLink" name="deliveryMapsLink"
+                        placeholder="https://maps.app.goo.gl/…"
+                        (ngModelChange)="onDeliveryFieldChanged()" />
+                      <small class="address-hint">💡 Overrides the fields above and pinpoints your exact dropped pin.</small>
+                    </div>
+                  </details>
                   <button type="button" class="btn quote-btn btn-block" [disabled]="delivery.loading() || !deliveryAddress.trim()" (click)="getDeliveryQuote()">
                     📍 {{ delivery.loading() ? 'Getting Quote…' : 'Find My Location & Get Delivery Quote' }}
                   </button>
@@ -248,6 +297,13 @@ import { DeliveryMapComponent } from '../delivery-map/delivery-map.component';
     .card h3, .step h3 { margin: 0 0 16px; color: #2E4A3B; }
     .field-row { display: grid; grid-template-columns: 1fr; gap: 12px; }
     @media (min-width: 560px) { .field-row { grid-template-columns: repeat(3, 1fr); } }
+    .field-row-2 { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    @media (min-width: 420px) { .field-row-2 { grid-template-columns: repeat(2, 1fr); } }
+    .delivery-box .field { margin-bottom: 12px; }
+    .delivery-box .field-row-2 { margin-bottom: 0; }
+    .maps-link-toggle { margin: 4px 0 12px; }
+    .maps-link-toggle summary { cursor: pointer; font-size: 13px; font-weight: 700; color: #2E4A3B; }
+    .maps-link-toggle .field { margin-top: 10px; margin-bottom: 0; }
     input, textarea, select { background: #FDFBF7; }
     input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 3px rgba(212, 195, 163, 0.5); border-color: #6F4E37; }
     .hint { font-size: 13px; }
@@ -333,7 +389,22 @@ export class CheckoutPageComponent implements OnInit, OnDestroy {
   receiptFileError = signal('');
 
   fulfillmentType: FulfillmentType = 'PICKUP';
+  // Structured PH address fields (Phase 3, docs/checkout-redesign-notes.md §5 Option B) — collected
+  // separately for a cleaner form, then concatenated into the same free-text search string the
+  // existing geocoding backend (DEC-001) already expects. No backend contract change.
+  deliveryHouseUnit = '';
+  deliveryStreet = '';
+  deliverySubdivision = '';
+  deliveryBarangay = '';
+  deliveryCity = '';
+  deliveryProvince = '';
+  deliveryZip = '';
+  deliveryLandmarkNotes = '';
+  deliveryMapsLink = '';
+  /** Derived from the structured fields above (or `deliveryMapsLink` verbatim, if set) — this is
+   *  what actually gets sent to `delivery.getQuote()`, unchanged from the old single free-text field. */
   deliveryAddress = '';
+  /** Derived from `deliveryHouseUnit` + `deliveryLandmarkNotes` — rider instructions, not used for the fee. */
   deliveryUnitDetails = '';
   unitDetailsError = signal('');
   /** Set while the customer has dragged the map pin but not yet confirmed the adjustment. */
@@ -383,6 +454,26 @@ export class CheckoutPageComponent implements OnInit, OnDestroy {
 
   onUnitDetailsChanged() {
     this.unitDetailsError.set('');
+  }
+
+  /** Recomputes `deliveryAddress` from the structured search fields (or `deliveryMapsLink`
+   *  verbatim, if set) whenever one of them changes. */
+  onDeliveryFieldChanged() {
+    this.deliveryAddress = this.deliveryMapsLink.trim()
+      ? this.deliveryMapsLink.trim()
+      : [this.deliveryStreet, this.deliverySubdivision, this.deliveryBarangay, this.deliveryCity, this.deliveryProvince, this.deliveryZip]
+          .map(part => part.trim())
+          .filter(Boolean)
+          .join(', ');
+    this.onAddressChanged();
+  }
+
+  /** Recomputes `deliveryUnitDetails` from the house/unit + landmark-notes fields. */
+  onDeliveryUnitFieldChanged() {
+    this.deliveryUnitDetails = [this.deliveryHouseUnit.trim(), this.deliveryLandmarkNotes.trim()]
+      .filter(Boolean)
+      .join(' — ');
+    this.onUnitDetailsChanged();
   }
 
   getDeliveryQuote() {
