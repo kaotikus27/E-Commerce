@@ -24,6 +24,7 @@ export class CheckoutService {
       productId: item.product.id,
       quantity: item.quantity,
       selectedOptions: Object.fromEntries(item.selectedOptions.map(o => [o.name, o.value])),
+      giftWrap: item.giftWrap,
     }));
 
     const orderData = {
@@ -37,6 +38,7 @@ export class CheckoutService {
       fulfillmentType: request.fulfillmentType,
       deliveryQuotationId: request.deliveryQuotationId,
       deliveryUnitDetails: request.deliveryUnitDetails,
+      promoCode: request.promoCode,
     };
 
     // The backend endpoint always expects multipart/form-data (so the same endpoint can

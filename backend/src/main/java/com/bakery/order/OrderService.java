@@ -10,6 +10,8 @@ import com.bakery.delivery.DeliveryQuoteService;
 import com.bakery.delivery.LalamoveClient;
 import com.bakery.delivery.LalamoveDriver;
 import com.bakery.delivery.LalamoveOrderStatus;
+import com.bakery.promocode.PromoCodeService;
+import com.bakery.promocode.PromoValidationResponseDto;
 import com.bakery.store.StoreSettingsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -34,6 +36,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public class OrderService {
 
     private static final BigDecimal TAX_RATE = new BigDecimal("0.0875");
+    private static final BigDecimal GIFT_WRAP_FEE = new BigDecimal("20.00");
     private static final int ORDER_NUMBER_MAX_ATTEMPTS = 10;
     private static final Path RECEIPT_UPLOAD_DIR = Path.of("uploads", "receipts");
     private static final Map<String, String> ALLOWED_RECEIPT_CONTENT_TYPES = Map.of(
@@ -49,6 +52,7 @@ public class OrderService {
     private final DeliveryQuoteService deliveryQuoteService;
     private final DeliveryDispatchService deliveryDispatchService;
     private final LalamoveClient lalamoveClient;
+    private final PromoCodeService promoCodeService;
 
     @Transactional
     public OrderResponseDto placeOrder(OrderRequestDto request, MultipartFile receiptImage) {
@@ -107,6 +111,9 @@ public class OrderService {
                             "Product " + itemReq.productId() + " does not exist"));
 
             BigDecimal unitPrice = product.getPrice().add(resolveOptionsSurcharge(product, itemReq.selectedOptions()));
+            if (itemReq.giftWrap()) {
+                unitPrice = unitPrice.add(GIFT_WRAP_FEE);
+            }
             BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(itemReq.quantity()))
                     .setScale(2, RoundingMode.HALF_UP);
             subtotal = subtotal.add(lineTotal);
@@ -119,17 +126,29 @@ public class OrderService {
                     .quantity(itemReq.quantity())
                     .selectedOptionsCsv(OrderOptionCodec.encode(itemReq.selectedOptions()))
                     .lineTotal(lineTotal)
+                    .giftWrap(itemReq.giftWrap())
                     .build();
 
             order.getItems().add(item);
         }
 
-        BigDecimal tax = subtotal.multiply(TAX_RATE).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal total = subtotal.add(tax).add(deliveryFee).setScale(2, RoundingMode.HALF_UP);
+        // Resolved authoritatively server-side against the real subtotal, exactly like the
+        // customization surcharge above — the client's displayed discount is only a preview.
+        BigDecimal discountAmount = BigDecimal.ZERO;
+        if (request.promoCode() != null && !request.promoCode().isBlank()) {
+            PromoValidationResponseDto validation = promoCodeService.validate(request.promoCode(), subtotal);
+            discountAmount = validation.discountAmount();
+            order.setPromoCode(validation.code());
+        }
+
+        BigDecimal discountedSubtotal = subtotal.subtract(discountAmount);
+        BigDecimal tax = discountedSubtotal.multiply(TAX_RATE).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal total = discountedSubtotal.add(tax).add(deliveryFee).setScale(2, RoundingMode.HALF_UP);
 
         order.setSubtotal(subtotal);
         order.setTax(tax);
         order.setTotal(total);
+        order.setDiscountAmount(discountAmount);
 
         Order saved = orderRepository.save(order);
         return OrderResponseDto.publicView(saved);

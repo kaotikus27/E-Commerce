@@ -16,6 +16,7 @@ import { AuthService } from '../../core/services/auth.service';
           <a routerLink="/admin/orders" routerLinkActive="active">Live Orders</a>
           <a routerLink="/admin/products" routerLinkActive="active">Menu &amp; Inventory</a>
           <a routerLink="/admin/promotions" routerLinkActive="active">Promotions</a>
+          <a routerLink="/admin/promo-codes" routerLinkActive="active">Promo Codes</a>
           <a routerLink="/admin/faqs" routerLinkActive="active">FAQs</a>
           <a routerLink="/admin/settings" routerLinkActive="active">Store Settings</a>
           <a routerLink="/admin/history" routerLinkActive="active">History</a>

@@ -8,6 +8,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { StoreService } from '../../../core/services/store.service';
 import { DeliveryService } from '../../../core/services/delivery.service';
 import { GeocodeCandidate } from '../../../core/models/delivery.model';
+import { PromoCodeService } from '../../../core/services/promo-code.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { FulfillmentType, OrderRequest, PaymentMethod } from '../../../core/models/order.model';
 import { toAbsoluteImageUrl } from '../../../core/utils/image-url.util';
@@ -260,11 +261,30 @@ import { DeliveryMapComponent } from '../delivery-map/delivery-map.component';
             </div>
           }
           <div class="review-row"><span>Subtotal</span><span>₱{{ cart.subtotal().toFixed(2) }}</span></div>
-          <div class="review-row"><span>Tax</span><span>₱{{ cart.tax().toFixed(2) }}</span></div>
+          @if (promo.applied(); as applied) {
+            <div class="review-row discount-row">
+              <span>🏷️ {{ applied.code }}</span>
+              <span>-₱{{ appliedDiscount().toFixed(2) }} <button type="button" class="promo-remove-btn" (click)="removePromoCode()">Remove</button></span>
+            </div>
+          }
+          <div class="review-row"><span>Tax</span><span>₱{{ estimatedTax().toFixed(2) }}</span></div>
           @if (fulfillmentType === 'DELIVERY') {
             <div class="review-row"><span>Delivery Fee</span><span>₱{{ (delivery.quote()?.feeTotal ?? 0).toFixed(2) }}</span></div>
           }
           <div class="review-row total"><span>Total (est.)</span><span>₱{{ estimatedTotal().toFixed(2) }}</span></div>
+
+          @if (!promo.applied()) {
+            <div class="promo-box">
+              <div class="promo-input-row">
+                <input type="text" [(ngModel)]="promoCodeInput" name="promoCodeInput" placeholder="Promo code"
+                  (ngModelChange)="promo.error.set('')" />
+                <button type="button" class="btn btn-secondary btn-sm" [disabled]="promo.loading() || !promoCodeInput.trim()" (click)="applyPromoCode()">
+                  {{ promo.loading() ? 'Applying…' : 'Apply' }}
+                </button>
+              </div>
+              @if (promo.error()) { <span class="field-error">{{ promo.error() }}</span> }
+            </div>
+          }
 
           @if (errorMessage()) {
             <p class="error">{{ errorMessage() }}</p>
@@ -353,6 +373,13 @@ import { DeliveryMapComponent } from '../delivery-map/delivery-map.component';
     .pickup-line { font-size: 14px; margin-bottom: 8px; color: #6F4E37; }
     .review-row { display: flex; justify-content: space-between; font-size: 14px; padding: 4px 0; color: #6F4E37; }
     .review-row.total { font-weight: 700; font-size: 16px; border-top: 1.5px dashed #6F4E37; margin-top: 8px; padding-top: 8px; color: #2E4A3B; }
+    .discount-row { color: #D96B43; font-weight: 700; }
+    .discount-row span:last-child { display: flex; align-items: center; gap: 8px; }
+    .promo-remove-btn { background: none; border: none; padding: 0; font-size: 11px; font-weight: 600; color: #6F4E37; text-decoration: underline; cursor: pointer; min-height: auto; }
+    .promo-box { margin: 10px 0; }
+    .promo-input-row { display: flex; gap: 8px; }
+    .promo-input-row input { flex: 1; background: #FDFBF7; border: 1.5px solid #D4C3A3; border-radius: var(--radius-sm); padding: 8px 10px; font-size: 13px; }
+    .promo-input-row .btn { flex-shrink: 0; }
     .error { color: var(--color-error); font-weight: 600; margin-bottom: 12px; }
     .field-error { color: var(--color-error); font-size: 12px; font-weight: 600; }
     .place-order-btn { background: #D96B43; color: var(--color-white); border: none; font-size: 16px; }
@@ -366,6 +393,7 @@ export class CheckoutPageComponent implements OnInit, OnDestroy {
   auth = inject(AuthService);
   store = inject(StoreService);
   delivery = inject(DeliveryService);
+  promo = inject(PromoCodeService);
   notifications = inject(NotificationService);
   router = inject(Router);
 
@@ -407,6 +435,7 @@ export class CheckoutPageComponent implements OnInit, OnDestroy {
   /** Derived from `deliveryHouseUnit` + `deliveryLandmarkNotes` — rider instructions, not used for the fee. */
   deliveryUnitDetails = '';
   unitDetailsError = signal('');
+  promoCodeInput = '';
   /** Set while the customer has dragged the map pin but not yet confirmed the adjustment. */
   adjustedPin = signal<{ latitude: number; longitude: number } | null>(null);
   private nowTick = signal(Date.now());
@@ -425,13 +454,33 @@ export class CheckoutPageComponent implements OnInit, OnDestroy {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   });
 
+  /** Re-derives the discount against the CURRENT cart subtotal (not a stale snapshot from the
+   *  moment "Apply" was clicked) using the same formula the backend uses to resolve it
+   *  authoritatively at order placement — so the preview stays accurate if the cart changes
+   *  after a code is applied, without needing to re-call the validate endpoint. */
+  readonly appliedDiscount = computed(() => {
+    const applied = this.promo.applied();
+    if (!applied) return 0;
+    const subtotal = this.cart.subtotal();
+    const raw = applied.discountType === 'PERCENT'
+      ? Math.round(subtotal * applied.discountValue) / 100
+      : applied.discountValue;
+    return Math.min(raw, subtotal);
+  });
+
+  readonly estimatedTax = computed(() => {
+    const discountedSubtotal = Math.max(0, this.cart.subtotal() - this.appliedDiscount());
+    return Math.round(discountedSubtotal * 0.0875 * 100) / 100;
+  });
+
   readonly estimatedTotal = computed(() => {
     // Read quote() unconditionally (not inside the ternary) so it's always a tracked dependency —
     // otherwise, on the first evaluation while still on PICKUP, the DELIVERY branch — and its
     // quote() read — is skipped entirely, and this computed never re-runs when a quote arrives later.
     const quoteFee = this.delivery.quote()?.feeTotal ?? 0;
     const deliveryFee = this.fulfillmentType === 'DELIVERY' ? quoteFee : 0;
-    return this.cart.total() + deliveryFee;
+    const discountedSubtotal = Math.max(0, this.cart.subtotal() - this.appliedDiscount());
+    return Math.round((discountedSubtotal + this.estimatedTax() + deliveryFee) * 100) / 100;
   });
 
   ngOnInit() {
@@ -474,6 +523,16 @@ export class CheckoutPageComponent implements OnInit, OnDestroy {
       .filter(Boolean)
       .join(' — ');
     this.onUnitDetailsChanged();
+  }
+
+  applyPromoCode() {
+    if (!this.promoCodeInput.trim()) return;
+    this.promo.apply(this.promoCodeInput.trim(), this.cart.subtotal()).subscribe();
+  }
+
+  removePromoCode() {
+    this.promo.clear();
+    this.promoCodeInput = '';
   }
 
   getDeliveryQuote() {
@@ -604,15 +663,17 @@ export class CheckoutPageComponent implements OnInit, OnDestroy {
       deliveryUnitDetails: this.fulfillmentType === 'DELIVERY' ? this.deliveryUnitDetails.trim() : undefined,
       items: this.cart.items(),
       subtotal: this.cart.subtotal(),
-      tax: this.cart.tax(),
+      tax: this.estimatedTax(),
       total: this.estimatedTotal(),
       notes: this.notes.trim() || undefined,
+      promoCode: this.promo.applied()?.code,
     };
 
     this.checkout.placeOrder(request).subscribe({
       next: order => {
         this.cart.clear();
         this.delivery.clear();
+        this.promo.clear();
         this.notifications.success('Order placed!');
         this.router.navigate(['/order-confirmation', order.publicToken]);
         this.submitting.set(false);

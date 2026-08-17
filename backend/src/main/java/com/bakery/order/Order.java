@@ -52,6 +52,13 @@ public class Order {
     private BigDecimal tax;
     private BigDecimal total;
 
+    /** The code as typed (normalized uppercase), null if none was applied. */
+    private String promoCode;
+    /** Resolved server-side at placement time — see PromoCodeService.validate. Zero (not null)
+     *  when no code was applied, so display code can sum it unconditionally. */
+    @Builder.Default
+    private BigDecimal discountAmount = BigDecimal.ZERO;
+
     private Instant createdAt;
 
     private String cancelReason;

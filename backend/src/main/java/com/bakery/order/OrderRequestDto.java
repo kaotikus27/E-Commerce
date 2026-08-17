@@ -20,6 +20,8 @@ public record OrderRequestDto(
         String deliveryQuotationId,
         /** Block/Lot/Phase/Gate/landmark rider instructions — plain text, never geocoded, so no
          *  quote/integrity handling needed (unlike deliveryAddress/fee, which come from the quote). */
-        String deliveryUnitDetails
+        String deliveryUnitDetails,
+        /** Optional — re-validated and priced authoritatively server-side, never trusted from the client. */
+        String promoCode
 ) {
 }

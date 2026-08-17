@@ -30,6 +30,8 @@ export interface OrderRequest {
   tax: number;
   total: number;
   notes?: string;
+  /** Re-validated and priced authoritatively server-side, never trusted from the client. */
+  promoCode?: string;
 }
 
 /** The flat item shape the backend's OrderItemRequestDto actually expects on POST /orders. */
@@ -37,6 +39,7 @@ export interface OrderItemRequest {
   productId: number;
   quantity: number;
   selectedOptions: Record<string, string>;
+  giftWrap: boolean;
 }
 
 /** Mirrors the backend's OrderItemResponseDto — the shape order items actually come back as from the API. */
@@ -47,6 +50,7 @@ export interface OrderItemSummary {
   selectedOptions: Record<string, string>;
   unitPrice: number;
   lineTotal: number;
+  giftWrap: boolean;
 }
 
 /** Mirrors the backend's OrderResponseDto (id = orderNumber, human-readable, display only) —
@@ -67,6 +71,8 @@ export interface Order {
   subtotal: number;
   tax: number;
   total: number;
+  promoCode?: string;
+  discountAmount?: number;
   createdAt: string;
   cancelReason?: string;
   notes?: string;

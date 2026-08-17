@@ -23,6 +23,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/admin/promotions/admin-promotions-page.component').then(m => m.AdminPromotionsPageComponent),
       },
       {
+        path: 'promo-codes',
+        loadComponent: () => import('./features/admin/promo-codes/admin-promo-codes-page.component').then(m => m.AdminPromoCodesPageComponent),
+      },
+      {
         path: 'faqs',
         loadComponent: () => import('./features/admin/faqs/admin-faqs-page.component').then(m => m.AdminFaqsPageComponent),
       },

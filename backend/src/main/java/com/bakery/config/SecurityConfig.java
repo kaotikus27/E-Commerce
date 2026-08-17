@@ -41,6 +41,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/products/**", "/api/v1/categories/**", "/api/v1/store/**", "/api/v1/promotions/**", "/api/v1/faqs/**").permitAll()
+                        .requestMatchers("/api/v1/promo-codes/**").permitAll() // checkout-time code preview
                         .requestMatchers("/api/v1/orders/**").permitAll() // guest checkout & order tracking
                         .requestMatchers("/api/v1/delivery/**").permitAll() // checkout delivery quote lookup
                         .requestMatchers("/api/v1/lalamove/**").permitAll() // Lalamove webhook — no JWT to send
