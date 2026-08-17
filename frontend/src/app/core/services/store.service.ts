@@ -16,6 +16,7 @@ export class StoreService {
   private api = inject(ApiService);
 
   private readonly info = signal<StoreInfo | null>(null);
+  private loadedOnce = false;
 
   readonly name = computed(() => this.info()?.name ?? 'Home by Bami');
   readonly address = computed(() => this.info()?.address ?? '048 Kay Piskal Rd, Brgy. Tigbe, Norzagaray, Bulacan');
@@ -39,6 +40,22 @@ export class StoreService {
       catchError(() => of(null))
     ).subscribe(info => {
       if (info) this.info.set(info);
+      this.loadedOnce = true;
+    });
+  }
+
+  /** Resolves once the first store-info fetch attempt completes (success or failure), or after
+   *  a 5s safety timeout. Guards/consumers that need a real `isOpen()` reading on a fresh page
+   *  load should await this first — `isOpen()` defaults to `false` until the initial fetch
+   *  resolves, which otherwise reads as "closed" during that brief window. */
+  async ensureLoaded(): Promise<void> {
+    if (this.loadedOnce) return;
+    await new Promise<void>(resolve => {
+      let settled = false;
+      const finish = () => { if (!settled) { settled = true; resolve(); } };
+      const check = () => { if (this.loadedOnce) finish(); else setTimeout(check, 50); };
+      check();
+      setTimeout(finish, 5000);
     });
   }
 }
