@@ -32,14 +32,21 @@ import { ItemModalComponent } from '../../components/item-modal.component';
       } @else if (sortedProducts().length === 0) {
         <p class="empty">No items match your search. Try another category.</p>
       } @else {
-        <div class="product-list">
-          @for (p of sortedProducts(); track p.id) {
-            <app-product-card
-              [product]="p"
-              layout="list"
-              (open)="activeProduct.set($event)"
-              (quickAddToCart)="quickAdd($event)">
-            </app-product-card>
+        <div class="menu-grid">
+          @for (group of groupedProducts(); track group.category.id) {
+            <div class="menu-category">
+              <h2 class="menu-category-title">{{ group.category.icon }} {{ group.category.name }}</h2>
+              <div class="menu-category-items">
+                @for (p of group.items; track p.id) {
+                  <app-product-card
+                    [product]="p"
+                    layout="menu"
+                    (open)="activeProduct.set($event)"
+                    (quickAddToCart)="quickAdd($event)">
+                  </app-product-card>
+                }
+              </div>
+            </div>
           }
         </div>
       }
@@ -59,7 +66,16 @@ import { ItemModalComponent } from '../../components/item-modal.component';
     .menu-hero h1 { color: var(--color-white); margin: 0; font-size: 28px; }
     .menu-page { padding: 24px 16px 48px; }
     .empty { text-align: center; color: var(--color-charcoal); padding: 48px 0; }
-    .product-list { display: flex; flex-direction: column; gap: 12px; }
+
+    .menu-grid { display: grid; grid-template-columns: 1fr; gap: 40px 56px; }
+    .menu-category-title {
+      margin: 0 0 12px; padding-bottom: 10px; font-size: 20px;
+      border-bottom: 2px solid var(--color-subdued-pistachio);
+    }
+    .menu-category-items { display: flex; flex-direction: column; }
+    @media (min-width: 860px) {
+      .menu-grid { grid-template-columns: repeat(2, 1fr); }
+    }
   `],
 })
 export class MenuPageComponent {
@@ -79,6 +95,15 @@ export class MenuPageComponent {
       case 'rating': return list.sort((a, b) => b.rating - a.rating);
       default: return list;
     }
+  });
+
+  /** Groups the current (filtered + sorted) product list by category, in category-list order,
+      so selecting one category naturally collapses to a single group instead of needing separate logic. */
+  groupedProducts = computed(() => {
+    const items = this.sortedProducts();
+    return this.productService.categories()
+      .map(category => ({ category, items: items.filter(p => p.categoryId === category.id) }))
+      .filter(group => group.items.length > 0);
   });
 
   constructor() {
@@ -103,7 +128,7 @@ export class MenuPageComponent {
     this.cart.addItem(product, 1, []);
   }
 
-  onAddedToCart(e: { product: Product; quantity: number; options: SelectedOption[] }) {
-    this.cart.addItem(e.product, e.quantity, e.options);
+  onAddedToCart(e: { product: Product; quantity: number; options: SelectedOption[]; giftWrap: boolean }) {
+    this.cart.addItem(e.product, e.quantity, e.options, e.giftWrap);
   }
 }
