@@ -5,17 +5,15 @@ import { filter, map } from 'rxjs';
 import { NavbarComponent } from './shared/components/navbar/navbar.component';
 import { FooterComponent } from './shared/components/footer/footer.component';
 import { ToastContainerComponent } from './shared/components/toast/toast.component';
-import { LocationBannerComponent } from './features/store/location-banner.component';
 import { CartDrawerComponent } from './features/cart/cart-drawer.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, NavbarComponent, FooterComponent, ToastContainerComponent, LocationBannerComponent, CartDrawerComponent],
+  imports: [RouterOutlet, NavbarComponent, FooterComponent, ToastContainerComponent, CartDrawerComponent],
   template: `
     @if (!isAdminRoute()) {
       <header class="site-header">
-        <app-location-banner></app-location-banner>
         <app-navbar></app-navbar>
       </header>
     }
