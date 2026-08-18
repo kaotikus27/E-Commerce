@@ -8,6 +8,7 @@ import java.util.Map;
 public record OrderItemRequestDto(
         @NotNull Long productId,
         @Min(1) int quantity,
-        Map<String, String> selectedOptions
+        Map<String, String> selectedOptions,
+        boolean giftWrap
 ) {
 }

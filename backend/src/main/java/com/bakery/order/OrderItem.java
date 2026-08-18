@@ -30,4 +30,7 @@ public class OrderItem {
     private String selectedOptionsCsv;
 
     private BigDecimal lineTotal;
+
+    /** Flat per-unit packaging fee (GIFT_WRAP_FEE in OrderService) already folded into unitPrice/lineTotal above. */
+    private boolean giftWrap;
 }

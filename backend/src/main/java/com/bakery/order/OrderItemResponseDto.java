@@ -9,13 +9,14 @@ public record OrderItemResponseDto(
         int quantity,
         Map<String, String> selectedOptions,
         BigDecimal unitPrice,
-        BigDecimal lineTotal
+        BigDecimal lineTotal,
+        boolean giftWrap
 ) {
     public static OrderItemResponseDto from(OrderItem item) {
         Map<String, String> options = OrderOptionCodec.decode(item.getSelectedOptionsCsv());
         return new OrderItemResponseDto(
                 item.getProductId(), item.getProductName(), item.getQuantity(),
-                options, item.getUnitPrice(), item.getLineTotal()
+                options, item.getUnitPrice(), item.getLineTotal(), item.isGiftWrap()
         );
     }
 }

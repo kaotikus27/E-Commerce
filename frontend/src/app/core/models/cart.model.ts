@@ -9,9 +9,11 @@ export interface SelectedOption {
 }
 
 export interface CartItem {
-  id: string;               // unique line id (product + options combo)
+  id: string;               // unique line id (product + options + gift-wrap combo)
   product: Product;
   quantity: number;
   selectedOptions: SelectedOption[];
+  /** Flat per-unit packaging fee (GIFT_WRAP_FEE) — applied per unit, same pattern as a customization surcharge. */
+  giftWrap: boolean;
   lineTotal: number;
 }
