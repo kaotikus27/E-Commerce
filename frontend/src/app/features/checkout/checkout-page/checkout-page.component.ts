@@ -1,5 +1,6 @@
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CartService } from '../../../core/services/cart.service';
@@ -709,8 +710,11 @@ export class CheckoutPageComponent implements OnInit, OnDestroy {
         this.router.navigate(['/order-confirmation', order.publicToken]);
         this.submitting.set(false);
       },
-      error: () => {
-        this.errorMessage.set('Could not place your order — the server may be unreachable. Please try again.');
+      error: (err: HttpErrorResponse) => {
+        // Surface the backend's actual reason (e.g. a reused GCash receipt reference, or the
+        // store having just closed) instead of a generic message — most failures here are a
+        // specific, actionable conflict the customer can fix themselves, not a dead server.
+        this.errorMessage.set(err.error?.message || 'Could not place your order — the server may be unreachable. Please try again.');
         this.submitting.set(false);
       },
     });

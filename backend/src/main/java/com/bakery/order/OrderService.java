@@ -87,7 +87,7 @@ public class OrderService {
             String gcashReference = order.getGcashReference();
             if (gcashReference != null && !gcashReference.isBlank() && orderRepository.existsByGcashReference(gcashReference)) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,
-                        "This GCash reference has already been used for another order. If you believe this is a mistake, please contact us.");
+                        "This receipt screenshot has already been used for a previous order — please upload a new screenshot for this payment. If you believe this is a mistake, please contact us.");
             }
         }
 
