@@ -10,6 +10,7 @@ const CUSTOMIZATION_NAME_TO_KEY: Record<string, string> = {
   Milk: 'MILK',
   'Sugar Level': 'SUGAR',
   Temperature: 'TEMP',
+  'Ice Level': 'ICE',
 };
 
 /** Mirrors the backend's PRESET_OPTION_NAMES (ProductService.java) — option names and
@@ -18,6 +19,7 @@ const CUSTOMIZATION_PRESET_OPTIONS: Record<string, string[]> = {
   MILK: ['Whole', 'Oat', 'Almond', 'Skim'],
   SUGAR: ['None', 'Light', 'Regular', 'Extra'],
   TEMP: ['Warmed', 'Room Temp'],
+  ICE: ['No Ice', 'Standard Ice', 'Extra Chill'],
 };
 
 @Component({
@@ -92,6 +94,17 @@ const CUSTOMIZATION_PRESET_OPTIONS: Record<string, string[]> = {
             }
           </div>
         }
+        <label class="checkbox-row"><input type="checkbox" [(ngModel)]="ice" name="ice" /> Ice Level (No Ice / Standard / Extra Chill)</label>
+        @if (ice) {
+          <div class="option-prices">
+            @for (opt of presetOptions('ICE'); track opt) {
+              <label class="option-price-row">
+                <span>{{ opt }}</span>
+                <span class="price-input"><span class="peso">+₱</span><input type="number" min="0" step="0.05" [(ngModel)]="customizationPrices['ICE'][opt]" [name]="'ice-' + opt" /></span>
+              </label>
+            }
+          </div>
+        }
       </div>
 
       <div class="field">
@@ -128,6 +141,7 @@ export class AdminProductFormModalComponent implements OnChanges {
   milk = false;
   sugar = false;
   temp = false;
+  ice = false;
   /** key -> option name -> price delta for this product. Always fully populated (defaulting
    *  to 0) for all 3 presets regardless of which checkboxes are on, so toggling a box back on
    *  doesn't lose whatever was typed in before it was unchecked, within the same edit session. */
@@ -166,6 +180,7 @@ export class AdminProductFormModalComponent implements OnChanges {
       this.milk = keys.has('MILK');
       this.sugar = keys.has('SUGAR');
       this.temp = keys.has('TEMP');
+      this.ice = keys.has('ICE');
       for (const customization of this.product.customizations) {
         const key = CUSTOMIZATION_NAME_TO_KEY[customization.name];
         if (!key) continue;
@@ -180,7 +195,7 @@ export class AdminProductFormModalComponent implements OnChanges {
       this.categoryId = this.categories[0]?.id ?? null;
       this.available = true;
       this.previewUrl = '';
-      this.milk = this.sugar = this.temp = false;
+      this.milk = this.sugar = this.temp = this.ice = false;
     }
   }
 
@@ -206,6 +221,7 @@ export class AdminProductFormModalComponent implements OnChanges {
         ...(this.milk ? ['MILK'] : []),
         ...(this.sugar ? ['SUGAR'] : []),
         ...(this.temp ? ['TEMP'] : []),
+        ...(this.ice ? ['ICE'] : []),
       ],
       customizationPrices: this.customizationPrices,
     });

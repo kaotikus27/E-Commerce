@@ -107,7 +107,8 @@ public class ProductService {
     private static final Map<String, List<String>> PRESET_OPTION_NAMES = Map.of(
             "MILK", List.of("Whole", "Oat", "Almond", "Skim"),
             "SUGAR", List.of("None", "Light", "Regular", "Extra"),
-            "TEMP", List.of("Warmed", "Room Temp"));
+            "TEMP", List.of("Warmed", "Room Temp"),
+            "ICE", List.of("No Ice", "Standard Ice", "Extra Chill"));
 
     private List<Customization> toCustomizations(List<String> keys, Map<String, Map<String, BigDecimal>> customizationPrices) {
         List<Customization> customizations = new ArrayList<>();
@@ -118,9 +119,10 @@ public class ProductService {
                 case "MILK" -> "Milk";
                 case "SUGAR" -> "Sugar Level";
                 case "TEMP" -> "Temperature";
+                case "ICE" -> "Ice Level";
                 default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown customization key: " + key);
             };
-            boolean required = key.equals("MILK") || key.equals("SUGAR");
+            boolean required = key.equals("MILK") || key.equals("SUGAR") || key.equals("ICE");
             Map<String, BigDecimal> keyPrices = prices.getOrDefault(key, Map.of());
             List<CustomizationOptionCodec.PricedOption> options = PRESET_OPTION_NAMES.get(key).stream()
                     .map(optionName -> new CustomizationOptionCodec.PricedOption(
