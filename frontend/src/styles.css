@@ -138,7 +138,7 @@ img { max-width: 100%; display: block; }
 .badge-bestseller { background: var(--color-terracotta); color: var(--color-white); }
 
 /* Inputs */
-.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; min-width: 0; }
 .field label { font-size: 13px; font-weight: 600; color: var(--color-text-chocolate); }
 .field input, .field select, .field textarea {
   width: 100%;

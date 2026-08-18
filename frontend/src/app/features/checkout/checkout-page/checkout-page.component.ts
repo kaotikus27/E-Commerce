@@ -64,9 +64,11 @@ import { PickupTimePickerComponent } from '../../cart/pickup-time-picker.compone
                 Delivery
               </label>
 
-              <app-pickup-time-picker (timeSelected)="cart.setPickupTime($event)"></app-pickup-time-picker>
-              @if (store.leadTimeMinutes() > 0) {
-                <p class="prep-note">💡 Orders take ~{{ store.leadTimeMinutes() }} mins to prepare fresh.</p>
+              @if (fulfillmentType === 'PICKUP') {
+                <app-pickup-time-picker (timeSelected)="cart.setPickupTime($event)"></app-pickup-time-picker>
+                @if (store.leadTimeMinutes() > 0) {
+                  <p class="prep-note">💡 Orders take ~{{ store.leadTimeMinutes() }} mins to prepare fresh.</p>
+                }
               }
 
               @if (fulfillmentType === 'DELIVERY') {
@@ -309,23 +311,29 @@ import { PickupTimePickerComponent } from '../../cart/pickup-time-picker.compone
     /* Bespoke palette matching the item-modal/cart-drawer (DEC-030/034) — Parchment Cream /
        Warm Oak / Forest Sage / Spirit Orange — not the site's global tokens. Phase 1 of
        docs/checkout-redesign-notes.md: visual restyle only, no layout/structural changes. */
-    .checkout-page { padding: 24px 16px 48px; max-width: 1180px; background: #F7F3E9; }
+    .checkout-page { padding: 24px 16px 48px; max-width: 1180px; background: #F7F3E9; overflow-x: hidden; }
     .checkout-page h1 { color: #2E4A3B; }
-    .checkout-grid { display: grid; grid-template-columns: 1fr; gap: 24px; align-items: start; }
+    /* min-width: 0 on every grid/flex item below overrides the default min-width: auto —
+       without it, an oversized descendant (e.g. the horizontally-scrolling time-slot row)
+       forces its ancestor chain wider instead of scrolling within its own overflow-x. */
+    .checkout-grid { display: grid; grid-template-columns: 1fr; gap: 24px; align-items: start; min-width: 0; }
+    .checkout-form, .order-summary { min-width: 0; }
     @media (min-width: 900px) {
       .checkout-grid { grid-template-columns: 1.6fr 1fr; }
       .order-summary { position: sticky; top: 20px; }
     }
     .card, .step {
-      width: 100%; max-width: 100%; box-sizing: border-box;
+      width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;
       padding: 24px; margin-bottom: 16px; background: #FDFBF7; border: 1.5px solid #D4C3A3;
       border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
     }
     .order-summary { margin-bottom: 0; }
     .card h3, .step h3 { margin: 0 0 16px; color: #2E4A3B; }
-    .field-row { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    .field-row { display: grid; grid-template-columns: 1fr; gap: 12px; min-width: 0; }
+    .field-row > * { min-width: 0; }
     @media (min-width: 560px) { .field-row { grid-template-columns: repeat(3, 1fr); } }
-    .field-row-2 { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    .field-row-2 { display: grid; grid-template-columns: 1fr; gap: 12px; min-width: 0; }
+    .field-row-2 > * { min-width: 0; }
     @media (min-width: 420px) { .field-row-2 { grid-template-columns: repeat(2, 1fr); } }
     .delivery-box .field { margin-bottom: 12px; }
     .delivery-box .field-row-2 { margin-bottom: 0; }
@@ -336,7 +344,8 @@ import { PickupTimePickerComponent } from '../../cart/pickup-time-picker.compone
     input:focus, textarea:focus, select:focus { outline: none; box-shadow: 0 0 0 3px rgba(212, 195, 163, 0.5); border-color: #6F4E37; }
     .hint { font-size: 13px; }
     .hint a { color: #2E4A3B; font-weight: 700; text-decoration: underline; }
-    .payment-options { display: flex; flex-direction: column; gap: 8px; }
+    .payment-options { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+    .payment-options > app-pickup-time-picker { min-width: 0; }
     .radio-row { display: flex; align-items: center; gap: 8px; font-weight: 600; min-height: 44px; color: #6F4E37; }
     .prep-note { font-size: 12px; color: #6F4E37; background: #F0E4C8; padding: 8px 12px; border-radius: var(--radius-sm); margin: 4px 0 8px; }
     .gcash-box { background: #F0E4C8; border-radius: var(--radius-sm); padding: 16px; margin: 4px 0 8px; }
@@ -507,6 +516,15 @@ export class CheckoutPageComponent implements OnInit, OnDestroy {
   onFulfillmentTypeChange() {
     this.delivery.clear();
     this.adjustedPin.set(null);
+    // Delivery has no "pickup time" concept of its own — Lalamove is always dispatched
+    // ASAP, never scheduled — but the backend still requires a non-null pickupTime on every
+    // order, so we set it here instead of showing the picker. Clearing it on PICKUP lets
+    // <app-pickup-time-picker> remount and default back to its own next-available slot.
+    if (this.fulfillmentType === 'DELIVERY') {
+      this.cart.setPickupTime('ASAP');
+    } else {
+      this.cart.setPickupTime('');
+    }
   }
 
   onAddressChanged() {
