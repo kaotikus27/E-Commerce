@@ -53,6 +53,13 @@
       <version>5.11.0</version>
     </dependency>
 
+    <!-- Per-IP rate limiting on unauthenticated endpoints (guest checkout) -->
+    <dependency>
+      <groupId>com.bucket4j</groupId>
+      <artifactId>bucket4j_jdk17-core</artifactId>
+      <version>8.19.0</version>
+    </dependency>
+
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
