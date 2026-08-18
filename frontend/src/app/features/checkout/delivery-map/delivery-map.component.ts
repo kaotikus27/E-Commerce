@@ -17,7 +17,9 @@ import * as L from 'leaflet';
     </div>
   `,
   styles: [`
-    .map-shell { position: relative; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--color-pistachio); }
+    /* Wood-board frame per docs/checkout-redesign-notes.md §4 — only the frame is themed;
+       the tiles/pin/drag behavior stay a real, accurate map (delivery accuracy depends on it). */
+    .map-shell { position: relative; border-radius: var(--radius-md); overflow: hidden; border: 3px solid #8B5E3C; }
     .map-el { height: 220px; width: 100%; }
     .attribution-note { position: absolute; bottom: 2px; right: 6px; font-size: 10px; color: var(--color-text-muted); background: rgba(255,255,255,0.75); padding: 0 4px; border-radius: 3px; z-index: 500; }
   `],
