@@ -46,6 +46,7 @@ public class StoreService {
         StoreSettingsDto settings = storeSettingsService.getSettings();
         return new StoreInfoDto(
                 NAME, settings.storeAddress(), settings.storePhone(), getMapUrl(),
+                getLatitude(), getLongitude(),
                 storeSettingsService.isAcceptingOrders(),
                 storeSettingsService.todayHoursLabel(),
                 settings.orderLeadTimeMinutes(),

@@ -27,6 +27,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/admin/promo-codes/admin-promo-codes-page.component').then(m => m.AdminPromoCodesPageComponent),
       },
       {
+        path: 'messages',
+        loadComponent: () => import('./features/admin/messages/admin-messages-page.component').then(m => m.AdminMessagesPageComponent),
+      },
+      {
         path: 'faqs',
         loadComponent: () => import('./features/admin/faqs/admin-faqs-page.component').then(m => m.AdminFaqsPageComponent),
       },
@@ -84,7 +88,8 @@ export const routes: Routes = [
   },
   {
     path: 'faq',
-    loadComponent: () => import('./features/static/faq-page.component').then(m => m.FaqPageComponent),
+    redirectTo: 'contact',
+    pathMatch: 'full',
   },
   {
     path: 'contact',

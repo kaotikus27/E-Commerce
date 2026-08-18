@@ -22,6 +22,8 @@ export class StoreService {
   readonly address = computed(() => this.info()?.address ?? '048 Kay Piskal Rd, Brgy. Tigbe, Norzagaray, Bulacan');
   readonly phone = computed(() => this.info()?.phone ?? '');
   readonly mapUrl = computed(() => this.info()?.mapUrl ?? '');
+  readonly latitude = computed(() => this.info()?.latitude ?? null);
+  readonly longitude = computed(() => this.info()?.longitude ?? null);
   readonly isOpen = computed(() => this.info()?.open ?? false);
   readonly todayHoursLabel = computed(() => this.info()?.todayHoursLabel ?? '…');
   readonly leadTimeMinutes = computed(() => this.info()?.orderLeadTimeMinutes ?? 15);

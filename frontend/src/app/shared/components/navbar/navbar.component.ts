@@ -22,7 +22,6 @@ import { CartService } from '../../../core/services/cart.service';
           <a routerLink="/about" routerLinkActive="active" (click)="mobileOpen.set(false)">About Us</a>
           <a routerLink="/shop" routerLinkActive="active" (click)="mobileOpen.set(false)">Product</a>
           <a routerLink="/contact" routerLinkActive="active" (click)="mobileOpen.set(false)">Contact</a>
-          <a routerLink="/faq" routerLinkActive="active" (click)="mobileOpen.set(false)">FAQ</a>
 
           <div class="search-box">
             <input

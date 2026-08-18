@@ -34,6 +34,8 @@ export interface StoreInfo {
   address: string;
   phone: string;
   mapUrl: string;
+  latitude: number | null;
+  longitude: number | null;
   open: boolean;
   todayHoursLabel: string;
   orderLeadTimeMinutes: number;
