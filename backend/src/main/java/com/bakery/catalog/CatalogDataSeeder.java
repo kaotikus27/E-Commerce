@@ -39,7 +39,7 @@ public class CatalogDataSeeder implements CommandLineRunner {
 
                 Product.builder().name("Sourdough Loaf").description("48-hour fermented sourdough with a crisp crust.")
                         .price(new BigDecimal("220.00")).category(categories.get("Daily Loaves"))
-                        .image("https://images.unsplash.com/photo-1585478259715-4d3a5f3a41c3?w=600")
+                        .image("https://images.unsplash.com/photo-1719161148345-c88b05af8186?w=600")
                         .badgesCsv("New").rating(4.9).available(true).build(),
 
                 Product.builder().name("Iced Latte").description("Double espresso over ice with your choice of milk.")
