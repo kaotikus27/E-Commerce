@@ -3,6 +3,7 @@ package com.bakery.order;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -42,6 +43,14 @@ public class AdminOrderController {
     public OrderResponseDto uploadReceipt(@PathVariable String orderNumber,
                                            @RequestPart("receiptImage") MultipartFile receiptImage) {
         return orderService.uploadReceiptForVerification(orderNumber, receiptImage);
+    }
+
+    @GetMapping("/{orderNumber}/receipt-image")
+    public ResponseEntity<byte[]> getReceiptImage(@PathVariable String orderNumber) {
+        OrderService.ReceiptImage receipt = orderService.getReceiptImage(orderNumber);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(receipt.mediaType()))
+                .body(receipt.bytes());
     }
 
     @PatchMapping("/{orderNumber}/dispatch")

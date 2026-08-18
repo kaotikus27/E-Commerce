@@ -1,5 +1,6 @@
 package com.bakery.catalog;
 
+import com.bakery.config.ImageUploadValidator;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -37,6 +38,9 @@ public class AdminUploadController {
         if (extension == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Unsupported image type. Allowed: " + List.copyOf(ALLOWED_CONTENT_TYPES.keySet()));
+        }
+        if (!ImageUploadValidator.isGenuineImage(file)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The uploaded file isn't a readable image.");
         }
 
         String filename = UUID.randomUUID() + "." + extension;

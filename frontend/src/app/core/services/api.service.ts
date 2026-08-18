@@ -28,4 +28,9 @@ export class ApiService {
   delete<T>(path: string) {
     return this.http.delete<T>(`${this.baseUrl}${path}`);
   }
+
+  /** For endpoints that return raw file bytes (e.g. an authenticated image) rather than JSON. */
+  getBlob(path: string) {
+    return this.http.get(`${this.baseUrl}${path}`, { responseType: 'blob' });
+  }
 }

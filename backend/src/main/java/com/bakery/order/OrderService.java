@@ -20,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 
+import com.bakery.config.ImageUploadValidator;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -38,11 +39,19 @@ public class OrderService {
     private static final BigDecimal TAX_RATE = new BigDecimal("0.0875");
     private static final BigDecimal GIFT_WRAP_FEE = new BigDecimal("20.00");
     private static final int ORDER_NUMBER_MAX_ATTEMPTS = 10;
-    private static final Path RECEIPT_UPLOAD_DIR = Path.of("uploads", "receipts");
+    /** Deliberately outside "uploads/" — that directory is statically served to the public by
+     *  UploadConfig for product images, and receipts contain sensitive payment details that must
+     *  only reach admins through the authenticated getReceiptImage() path below. */
+    private static final Path RECEIPT_UPLOAD_DIR = Path.of("private-uploads", "receipts");
     private static final Map<String, String> ALLOWED_RECEIPT_CONTENT_TYPES = Map.of(
             "image/png", "png",
             "image/jpeg", "jpg",
             "image/webp", "webp"
+    );
+    private static final Map<String, String> RECEIPT_MEDIA_TYPE_BY_EXTENSION = Map.of(
+            "png", "image/png",
+            "jpg", "image/jpeg",
+            "webp", "image/webp"
     );
 
     private final OrderRepository orderRepository;
@@ -416,6 +425,10 @@ public class OrderService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Unsupported receipt image type. Allowed: " + List.copyOf(ALLOWED_RECEIPT_CONTENT_TYPES.keySet()));
         }
+        if (!ImageUploadValidator.isGenuineImage(receiptImage)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "The uploaded file isn't a readable image. Please upload a real screenshot of your GCash receipt.");
+        }
 
         String filename = UUID.randomUUID() + "." + extension;
         try {
@@ -425,6 +438,29 @@ public class OrderService {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to store receipt image", e);
         }
 
-        return "/uploads/receipts/" + filename;
+        return filename;
+    }
+
+    /** Admin-only: reads a receipt's raw bytes off the private upload dir for AdminOrderController
+     *  to serve. Never exposed as a public static path — receipts contain payment details. */
+    public ReceiptImage getReceiptImage(String orderNumber) {
+        Order order = orderRepository.findByOrderNumber(orderNumber)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order " + orderNumber + " not found"));
+        String filename = order.getReceiptImagePath();
+        if (filename == null || filename.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order " + orderNumber + " has no receipt image");
+        }
+
+        Path file = RECEIPT_UPLOAD_DIR.resolve(filename);
+        String extension = filename.substring(filename.lastIndexOf('.') + 1);
+        String mediaType = RECEIPT_MEDIA_TYPE_BY_EXTENSION.getOrDefault(extension, "application/octet-stream");
+        try {
+            return new ReceiptImage(Files.readAllBytes(file), mediaType);
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Receipt image file is missing", e);
+        }
+    }
+
+    public record ReceiptImage(byte[] bytes, String mediaType) {
     }
 }

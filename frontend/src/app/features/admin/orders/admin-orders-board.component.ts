@@ -6,7 +6,6 @@ import { AdminOrderService } from '../services/admin-order.service';
 import { AdminOrder } from '../../../core/models/order.model';
 import { ModalComponent } from '../../../shared/components/modal/modal.component';
 import { NotificationService } from '../../../core/services/notification.service';
-import { toAbsoluteImageUrl } from '../../../core/utils/image-url.util';
 
 const POLL_MS = 8000;
 const ORIGINAL_TITLE = 'Home by Bami — Admin';
@@ -134,9 +133,13 @@ const ORIGINAL_TITLE = 'Home by Bami — Admin';
         <div class="gcash-ref">Ref #: <strong>{{ order.gcashReference }}</strong></div>
       }
       @if (order.receiptImagePath) {
-        <a [href]="toImageUrl(order.receiptImagePath)" target="_blank" rel="noopener" class="receipt-thumb-link">
-          <img [src]="toImageUrl(order.receiptImagePath)" alt="Uploaded GCash receipt" class="receipt-thumb" />
-        </a>
+        @if (receiptImageUrl(order); as url) {
+          <a [href]="url" target="_blank" rel="noopener" class="receipt-thumb-link">
+            <img [src]="url" alt="Uploaded GCash receipt" class="receipt-thumb" />
+          </a>
+        } @else {
+          <div class="receipt-thumb receipt-thumb-loading">Loading receipt…</div>
+        }
       }
       @if (order.paymentStatus === 'PENDING_VERIFICATION') {
         <div class="field receipt-upload">
@@ -149,7 +152,7 @@ const ORIGINAL_TITLE = 'Home by Bami — Admin';
       }
       <ul class="items">
         @for (item of order.items; track item.productId) {
-          <li>{{ item.quantity }}× {{ item.productName }}</li>
+          <li>{{ item.quantity }}× {{ item.productName }}{{ item.giftWrap ? ' 🎁' : '' }}</li>
         }
       </ul>
       @if (order.notes) {
@@ -199,6 +202,7 @@ const ORIGINAL_TITLE = 'Home by Bami — Admin';
     .ocr-badge.ocr-unavailable { color: var(--color-status-pending); font-weight: 600; }
     .receipt-thumb-link { display: block; margin-bottom: 8px; }
     .receipt-thumb { display: block; width: 100%; max-height: 160px; object-fit: cover; border-radius: var(--radius-sm); border: 1.5px solid var(--color-subdued-pistachio); }
+    .receipt-thumb-loading { display: flex; align-items: center; justify-content: center; height: 60px; font-size: 12px; color: var(--color-text-muted); background: var(--color-subdued-pistachio); border-radius: var(--radius-sm); margin-bottom: 8px; }
     .receipt-upload { margin-bottom: 8px; }
     .receipt-upload label { font-size: 12px; }
     .mark-paid { width: 100%; margin-bottom: 10px; }
@@ -218,8 +222,6 @@ export class AdminOrdersBoardComponent implements OnInit, OnDestroy {
   rejectReason = '';
   flashNew = signal(false);
 
-  toImageUrl = toAbsoluteImageUrl;
-
   /** Admin's in-progress edits to a GCash order's reference number, keyed by order id — seeded
    *  from the customer-typed/OCR-fallback value the first time each order is seen, so re-polling
    *  doesn't clobber whatever the admin is mid-typing. */
@@ -235,6 +237,13 @@ export class AdminOrdersBoardComponent implements OnInit, OnDestroy {
   private seededRefIds = new Set<string>();
   private firstLoad = true;
   private titleTimer?: ReturnType<typeof setTimeout>;
+
+  /** Object URLs for receipt images, keyed by order id — populated by fetchMissingReceiptImages()
+   *  since receipts now come from an authenticated endpoint, not a plain public <img src>. */
+  private receiptImageUrls = signal<Record<string, string>>({});
+  /** "orderId:receiptImagePath" keys already fetched or in flight, so re-polling doesn't
+   *  re-fetch a receipt that hasn't changed, and a replaced receipt (new path) does. */
+  private fetchedReceiptKeys = new Set<string>();
 
   constructor() {
     // Fires whenever the orders signal updates (i.e. after every successful poll) — diff
@@ -256,6 +265,35 @@ export class AdminOrdersBoardComponent implements OnInit, OnDestroy {
         }
       }
     }, { allowSignalWrites: true });
+
+    // Runs across every column (not just received()) — a GCash receipt stays visible on a
+    // card as it moves through Preparing/Ready/Completed, so it has to keep being fetchable.
+    effect(() => {
+      this.fetchMissingReceiptImages(this.orderService.orders());
+    }, { allowSignalWrites: true });
+  }
+
+  private fetchMissingReceiptImages(orders: AdminOrder[]) {
+    for (const order of orders) {
+      if (!order.receiptImagePath) continue;
+      const key = `${order.id}:${order.receiptImagePath}`;
+      if (this.fetchedReceiptKeys.has(key)) continue;
+      this.fetchedReceiptKeys.add(key);
+
+      this.orderService.getReceiptImageBlob(order.id).subscribe({
+        next: blob => {
+          const url = URL.createObjectURL(blob);
+          const previous = this.receiptImageUrls()[order.id];
+          if (previous) URL.revokeObjectURL(previous);
+          this.receiptImageUrls.update(m => ({ ...m, [order.id]: url }));
+        },
+        error: () => this.fetchedReceiptKeys.delete(key),
+      });
+    }
+  }
+
+  receiptImageUrl(order: AdminOrder): string | null {
+    return this.receiptImageUrls()[order.id] ?? null;
   }
 
   getEditedRef(order: AdminOrder): string {
@@ -288,6 +326,7 @@ export class AdminOrdersBoardComponent implements OnInit, OnDestroy {
     this.pollSub?.unsubscribe();
     if (this.titleTimer) clearTimeout(this.titleTimer);
     document.title = ORIGINAL_TITLE;
+    for (const url of Object.values(this.receiptImageUrls())) URL.revokeObjectURL(url);
   }
 
   /** Pickup orders can always be marked ready. Delivery orders need a rider actually assigned

@@ -121,6 +121,12 @@ export class AdminOrderService {
     );
   }
 
+  /** Receipts are served from an admin-only endpoint (not a public static path), so they must be
+   *  fetched as an authenticated blob rather than linked directly in an <img src>. */
+  getReceiptImageBlob(orderNumber: string) {
+    return this.api.getBlob(`/admin/orders/${orderNumber}/receipt-image`);
+  }
+
   /** Admin clicks "Call Lalamove Rider" — places a real Lalamove order (Phase 2). */
   dispatchDelivery(orderNumber: string) {
     return this.api.patch<AdminOrder>(`/admin/orders/${orderNumber}/dispatch`, {}).pipe(
