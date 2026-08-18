@@ -4,7 +4,7 @@ type: handoff
 status: active
 owner: "Leo"
 created: 2026-08-11
-updated: 2026-08-17
+updated: 2026-08-18
 ai_access: internal
 ai_generated: true
 review_status: draft
@@ -57,6 +57,15 @@ canonical: true
 - **Known limitation, not a new bug:** visually verifying the checkout promo UI and the new admin Promo Codes page live in the browser hit the same already-tracked Open Issue 12 symptom (routed/interaction-triggered content not re-rendering on this automated tab) — confirmed identical on the pre-existing `/admin/orders` route too when hard-loaded, so it's not specific to this session's new code. Business logic was verified instead via direct signal reads and API calls, which matched the server exactly. `ng.applyChanges()` itself also started throwing an internal assertion error tab-wide (even on `app-root`) partway through this session — a devtools-bridge issue, not an app defect.
 - Backend dev server was found down at the start of this session (no shutdown log entry, likely killed) and was restarted twice (once at session start, once after the promo-code schema changes needed a fresh process to pick them up — `mvnw compile` alone doesn't restart an already-running `spring-boot:run`, a known gotcha from DEC-012).
 
+**2026-08-18 session (new Claude Code session, recall + cleanup):** User asked where the prior session left off. This file's own narrative had stopped mid checkout-redesign (2026-08-17), but `git log` showed 4 more commits had landed since without ever updating this file (`e152c13` FAQ→Contact merge, `c2338c0` mobile UX pass, `c7a21bd` checkout overflow/pickup-time fix, `6ff8edd` surface real checkout errors — now the base for this session). On top of that, the working tree held a large uncommitted pile: `DECISIONS.md` entries DEC-022 through DEC-035 (write-ups for already-shipped work — Sourdough image, Philosophy placeholder image, section-width pass, `/shop` redesign, item-modal/cart-drawer rebuild, checkout Phase 1) plus ~20 modified/new files never committed at all.
+
+Reviewed every uncommitted file's actual diff (not just the stat) before touching anything, which surfaced two real, previously-unknown problems: (1) `OrderService.placeOrder()` and `cart.service.ts` already read/wrote a `giftWrap` flag, but `OrderItem`/`OrderItemRequestDto`/`OrderItemResponseDto`/`CartItem` never declared the field — **the last several commits on `main` did not actually compile on a fresh clone.** (2) `item-modal.component.ts` and `cart-drawer.component.ts` (already committed in `c2338c0`/`c7a21bd`) reference `[panelClass]`/`[backdropClass]`/`[modalDecoration]` on `<app-modal>` and three image assets (`soot-sprite.png`, `vines-accent.png`, `wood-board-outer.png`) that were **never added to git** — the themed modal card and its decorations have been silently non-functional on any machine but the one that made them.
+
+Split the pile into 14 logical commits (gift-wrap field fix first, as the most urgent), rather than one giant commit, so each is independently reviewable:
+`47f4b38` fix gift-wrap compile break → `96ac087` per-IP order rate limiting (new, bucket4j) → `5d188c6` genuine-image validation + authenticated GCash receipt endpoint (new) → `cb8a361` Ice Level customization preset → `538e6c5` Sourdough image fix (DEC-022) → `3e54b9a` `/shop` grouped-by-category redesign (DEC-027) → `088c008` themed-modal support + its 3 missing assets (DEC-029/031/033) → `8bace38` delivery-map wood frame (DEC-035) → `c4664b6` location-banner removal (DEC-026) → `366a498` admin-panel-overview.md → `5308fee` remaining mockup reference images → `ed8aaec` Obsidian workspace state → `07bd25e` backfilled `DECISIONS.md` (DEC-022–038, including new entries for the 3 previously-undocumented fixes above) → `f7b2f88` gitignore the frontend dev-server log. Verified the end state compiles clean: `mvnw compile` (offline) and `ng build --configuration production` both succeeded with no errors (only the pre-existing CSS-budget warnings on home-page/checkout-page).
+
+**Left deliberately untouched:** `1.md` at the project root — empty, untracked, purpose unclear; not added to git, not deleted. `.obsidian/workspace.json` — churns on every file open, left uncommitted as transient UI state.
+
 # Current Status
 
 Backend confirmed via direct API calls (prior session): geocoding, address disambiguation, Lalamove quotation/dispatch all working end-to-end. Frontend/UI checkout-delivery flow now also confirmed this session, running locally (backend :8080, frontend :4200):
@@ -66,7 +75,7 @@ Backend confirmed via direct API calls (prior session): geocoding, address disam
 
 # Decisions Made
 
-See `DECISIONS.md` for the full log — DEC-035 (checkout Phase 1 restyle) is the latest logged entry. Note: this 2026-08-17 session's Phases 2–4 (sticky layout, structured address fields, promo codes) were deliberately **not** logged as DEC entries, per Leo's request to skip that paper trail this time — see this file's own session narrative above and the `backlog.md` items instead for the full write-up.
+See `DECISIONS.md` for the full log — DEC-038 (upload/receipt security hardening) is the latest logged entry, committed 2026-08-18 alongside DEC-022–037 (a mix of backfilled write-ups for already-shipped work and new entries for previously-undocumented fixes from this session). Note: the 2026-08-17 session's Phases 2–4 (sticky layout, structured address fields, promo codes) were deliberately **not** logged as DEC entries, per Leo's request to skip that paper trail that time — see `backlog.md` and the git history (`bca983c`, `4390e05`, `a091187`) instead.
 
 # Files Changed (2026-08-15 session)
 
@@ -176,15 +185,16 @@ Prior session: `backend/mvnw` — executable bit fix, committed and pushed as `4
 1. On the Mac machine: set `TESSDATA_PATH` env var to its local Homebrew tessdata path, and re-attempt reproducing Open Issue 3 (Settings page render bug) — it may reproduce there, or may already be resolved.
 2. Once Open Issue 3 is resolved (or ruled out), re-enter store phone/GCash info in Admin → Store Settings — it will now actually persist across restarts (Open Issue 2 fixed).
 3. Consider surfacing `lalamoveOrderId` on the admin order view (see `backlog.md`) so `simulate-lalamove-webhook.js` and the new sync endpoint don't require an H2-console lookup to test against a specific order.
-4. ~~If real (not simulated) end-to-end webhook testing is wanted, set up a public tunnel...~~ **Done (2026-08-15)** — Cloudflare quick tunnel live, new URL registered with Lalamove. Keep the `cloudflared` process running for as long as real sandbox webhook testing is needed; if it's ever restarted, follow `docs/lalamove-webhook-tunnel.md` to get and re-register the new URL.
-5. ~~Continue the Ghibli-themed home page redesign, section by section.~~ **Done (2026-08-15).** All 8 sections rebuilt/restyled per `frontend/src/assets/home-cafe-by-bami-landing.png`: Hero (DEC-013), Welcome (DEC-014), Philosophy (DEC-015), menu preview (DEC-016), promo/Autumn banner (DEC-017), testimonials (DEC-018), Visit Us (DEC-019), footer (DEC-020). Remaining known gaps, tracked in `backlog.md`: the Philosophy section's image placeholder (mockup itself has no image there — needs a real asset from Leo) and the Sourdough Loaf product's missing image. No further redesign work queued unless Leo has new mockup changes or wants a design review pass.
-6. **Decide priority on Open Issue 12** (About/Contact/FAQ/Terms/Shop/admin-routes rendering blank on first paint) — a real, significant bug now confirmed to affect admin operations too, not just customer-facing static pages. Needs focused investigation to actually root-cause and fix (first attempt didn't work); see `docs/docsdebug.md` for the full trail already gathered so the next session doesn't have to re-derive it.
-7. **Commit and push Phase 4 (promo codes)** — currently uncommitted in the working tree (see Files Changed above). The pattern this session used was: stage exactly the files touched for that piece of work (not the whole pile of unrelated pre-existing uncommitted redesign work), commit, then separately bump+push the vault's submodule pointer only when asked.
-8. The large pile of pre-existing uncommitted work from earlier 2026-08-17 (DEC-022 through DEC-035 — Sourdough image fix, home-page width pass, `/shop` and item-modal redesigns, cart-drawer redesign) is **still sitting uncommitted** in the working tree, untouched this session. Worth a dedicated commit/cleanup pass at some point rather than letting it keep growing.
+4. **Decide priority on Open Issue 12** (About/Contact/FAQ/Terms/Shop/admin-routes rendering blank on first paint) — still the top unresolved risk, untouched this session. See `docs/docsdebug.md` for the investigation trail already gathered.
+5. ~~Commit and push Phase 4 (promo codes) and the DEC-022–035 uncommitted pile.~~ **Done (2026-08-18).** All of it — Phase 4 plus the gift-wrap compile-break fix, rate limiting, upload/receipt security hardening, Ice Level preset, Sourdough fix, `/shop` redesign, themed-modal support + its missing assets, and the backfilled `DECISIONS.md` entries — is now committed in 14 logical commits on `main` (`47f4b38`…`f7b2f88`). Backend (`mvnw compile`) and frontend (`ng build --configuration production`) both verified clean. **Not yet pushed to `origin`, and the vault's submodule pointer hasn't been bumped either** — do both if/when asked.
+6. **Live-verify the receipt-privacy change** (DEC-038) against the actual running dev backend — the admin board's receipt thumbnails now go through an authenticated blob fetch instead of a plain `<img src>`; this was verified by code review and a clean build, not a live click-through, since no dev server was running this session.
+7. `1.md` (empty file at the project root) — left untouched; ask Leo what it's for before deleting it.
 
 # Risks
 
 **Top risk: Open Issue 12** — `/about`, `/contact`, `/faq`, `/terms`, `/shop`'s product list, AND now confirmed `/admin/orders` and `/admin/promo-codes` render blank on first paint / hard load for real visitors and admins. Pre-existing (not caused by any of this session's work), but now confirmed to reach into admin operations, not just customer-facing static pages. Still not root-caused. **Resolved this session:** the `checkoutGuard` redirect race (Open Issue 13) and the missing `gift_wrap` column that was breaking all order placement (Open Issue 14) — the latter was silent and would have blocked every real customer order until someone happened to restart the backend and try to check out.
+
+**2026-08-18 addition:** `main` had actually stopped compiling as of some earlier point in the 2026-08-17 work — `OrderItem`/`OrderItemRequestDto`/`OrderItemResponseDto`/`CartItem` were missing the `giftWrap` field their own call sites already used. Fixed (DEC-036) and confirmed both `mvnw compile` and `ng build --configuration production` succeed on the current `main`. All of today's commits are local only — not pushed to `origin`, and the vault's submodule pointer is still one commit behind (`879bd54`).
 
 # Validation Status
 
