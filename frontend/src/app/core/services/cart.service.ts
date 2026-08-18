@@ -4,6 +4,9 @@ import { Product } from '../models/product.model';
 import { NotificationService } from './notification.service';
 
 const STORAGE_KEY = 'bakery_cart_v1';
+/** Mirrors the backend's OrderService.GIFT_WRAP_FEE — display-only estimate; the backend
+ *  recalculates authoritatively at checkout, same as customization surcharges already do. */
+const GIFT_WRAP_FEE = 20.00;
 
 /**
  * Singleton cart state shared across the navbar badge, cart drawer, and
@@ -23,6 +26,10 @@ export class CartService {
 
   readonly isDrawerOpen = signal(false);
 
+  /** Bumped on every successful addItem() — the navbar watches this to trigger a transient
+   *  "+1" flying badge near the cart icon, without stealing focus/scroll via the cart drawer. */
+  readonly addedPulse = signal(0);
+
   /** Selected pickup slot from <app-pickup-time-picker>, read by checkout when placing the order. */
   readonly pickupTime = signal('');
 
@@ -41,18 +48,19 @@ export class CartService {
     }
   }
 
-  private lineId(product: Product, options: SelectedOption[]): string {
+  private lineId(product: Product, options: SelectedOption[], giftWrap: boolean): string {
     const optKey = options.map(o => `${o.name}:${o.value}`).sort().join('|');
-    return `${product.id}__${optKey}`;
+    return `${product.id}__${optKey}__${giftWrap ? 'gift' : 'no-gift'}`;
   }
 
-  private unitPriceWithOptions(product: Product, options: SelectedOption[]): number {
-    return product.price + options.reduce((sum, o) => sum + o.priceDelta, 0);
+  private unitPriceWithOptions(product: Product, options: SelectedOption[], giftWrap: boolean): number {
+    const optionsTotal = options.reduce((sum, o) => sum + o.priceDelta, 0);
+    return product.price + optionsTotal + (giftWrap ? GIFT_WRAP_FEE : 0);
   }
 
-  addItem(product: Product, quantity: number, options: SelectedOption[] = []) {
-    const id = this.lineId(product, options);
-    const unitPrice = this.unitPriceWithOptions(product, options);
+  addItem(product: Product, quantity: number, options: SelectedOption[] = [], giftWrap = false) {
+    const id = this.lineId(product, options, giftWrap);
+    const unitPrice = this.unitPriceWithOptions(product, options, giftWrap);
     const existing = this._items().find(i => i.id === id);
 
     if (existing) {
@@ -63,12 +71,13 @@ export class CartService {
         product,
         quantity,
         selectedOptions: options,
+        giftWrap,
         lineTotal: Math.round(unitPrice * quantity * 100) / 100,
       };
       this._items.set([...this._items(), newItem]);
     }
     this.notifications.success(`${product.name} added to cart`);
-    this.isDrawerOpen.set(true);
+    this.addedPulse.update(v => v + 1);
   }
 
   updateQuantity(id: string, quantity: number) {
@@ -78,7 +87,7 @@ export class CartService {
     }
     this._items.set(this._items().map(i =>
       i.id === id
-        ? { ...i, quantity, lineTotal: Math.round(this.unitPriceWithOptions(i.product, i.selectedOptions) * quantity * 100) / 100 }
+        ? { ...i, quantity, lineTotal: Math.round(this.unitPriceWithOptions(i.product, i.selectedOptions, i.giftWrap) * quantity * 100) / 100 }
         : i
     ));
   }

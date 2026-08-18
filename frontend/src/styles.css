@@ -58,6 +58,8 @@ html, body {
   margin: 0;
   padding: 0;
   min-height: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
   background: var(--color-canvas-oat);
   color: var(--color-text-chocolate);
   font-family: var(--font-body);
@@ -110,7 +112,7 @@ img { max-width: 100%; display: block; }
 .btn-secondary { background: var(--color-white); color: var(--color-text-chocolate); border: 1.5px solid var(--color-text-chocolate); }
 .btn-secondary:hover { background: var(--color-subdued-pistachio); }
 .btn-block { width: 100%; }
-.btn-sm { min-height: 40px; padding: 0 16px; font-size: 14px; }
+.btn-sm { min-height: 44px; padding: 0 16px; font-size: 14px; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Cards — heavily rounded "chibi" cards */
@@ -139,6 +141,8 @@ img { max-width: 100%; display: block; }
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
 .field label { font-size: 13px; font-weight: 600; color: var(--color-text-chocolate); }
 .field input, .field select, .field textarea {
+  width: 100%;
+  max-width: 100%;
   min-height: var(--touch-target);
   border-radius: var(--radius-sm);
   border: 1.5px solid var(--color-border-subtle);
@@ -163,8 +167,11 @@ img { max-width: 100%; display: block; }
 /* Mobile-first breakpoints helper classes used across feature components */
 .grid-responsive {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr;
   gap: 16px;
+}
+@media (min-width: 480px) {
+  .grid-responsive { grid-template-columns: repeat(2, 1fr); }
 }
 @media (min-width: 640px) {
   .grid-responsive { grid-template-columns: repeat(3, 1fr); }

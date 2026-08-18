@@ -57,8 +57,71 @@ was found, and how (or whether) it was fixed.
 - **Fix:** None applied yet — reverted the attempted `ChangeDetectorRef` fix since it didn't
   actually work, so `info-page.component.ts` is back to its original (broken) state. Flagged to
   Leo for a decision on priority/scope before investing more time.
-
----
+- **2026-08-17 update — confirmed this also affects Admin routes, and now blocks click navigation
+  too (bigger scope than previously known):** While investigating a reported `403` on the admin
+  panel, hard-loading `http://localhost:4200/admin/orders` directly (typed URL / fresh tab)
+  reproduced the identical symptom on a route family never tested before: `app-admin-shell`
+  mounts (sidebar nav renders, `innerText.length` is only 96 — just the nav labels) but its child
+  route content (`app-admin-orders-board`) never mounts at all, and clicking a sidebar
+  `routerLink` (`Menu & Inventory`) did **not navigate** — `location.href` stayed on
+  `/admin/orders` after the click. This is new: the existing write-up above only established a
+  *first-paint* failure on components that had already navigated-to render blank; this instance
+  shows navigation-triggered updates failing too, not just initial paint. Also newly observed:
+  `AppComponent`'s own `isAdminRoute()` `@if` block (which hides the customer-facing navbar/footer
+  on `/admin/*` routes) stayed `false`-rendered on this same hard-load — `app-navbar`, `app-footer`,
+  and `app-admin-shell` were all present in the DOM simultaneously. This fits the same root-cause
+  theory (lazy route / first-CD-pass-after-navigation not running) but now implicates the *root*
+  `AppComponent`'s conditional too, not just lazy-loaded page components — suggesting the whole
+  Router→Zone→change-detection handoff on a fresh/hard navigation is affected, app-wide, not a
+  quirk isolated to lazy `loadComponent()` routes. Not yet re-investigated with the
+  `ng.applyChanges()` / production-build isolation steps used above — flagging the wider scope for
+  whenever this gets prioritized, since it now plausibly affects admin operations too, not just
+  customer-facing static pages.
+- **2026-08-18 update — reproduced with NO route navigation and NO lazy component involved,
+  narrowing (and complicating) the root-cause theory:** Clicking the navbar cart button
+  (`app-navbar` → `app-cart-drawer`, both eagerly mounted as part of `AppComponent`, not
+  lazy-loaded, no router activity) via the claude-in-chrome automation tab left
+  `cart.isDrawerOpen()` correctly flipped to `true` (confirmed via `ng.getComponent()`), but
+  `.drawer-backdrop` was never added to the DOM — `document.querySelector('app-root').innerHTML`
+  confirmed it wasn't just hidden by CSS, the node was never created. This rules out lazy-loading
+  and router-activation timing as the sole cause, since neither is in play here — it's a plain
+  signal update from a click handler in an already-rendered component tree. `ng.applyChanges()`
+  on the `app-root` component instance immediately fixed the paint, same workaround as before.
+  New theory worth checking first next time this is picked up: `app.config.ts` sets
+  `provideZoneChangeDetection({ eventCoalescing: true })`, which batches change-detection into a
+  `requestAnimationFrame`-scheduled flush — plausible that CDP-driven synthetic input in an
+  automated/background browser tab doesn't reliably generate the task/rAF boundary Zone.js expects
+  to trigger that flush, so the coalesced CD pass silently never fires. Not yet tested (e.g. by
+  temporarily setting `eventCoalescing: false` and seeing if the symptom disappears in the same
+  automation tab) — flagging as the most concrete next step. Also not yet tested with a real
+  (non-automated) mouse click, which would confirm whether this is automation-environment-specific
+  or a real, user-facing bug — see the "Manually check all the flows" note in the project handoff.
+- **2026-08-18 update — Leo reported a new manifestation on `/checkout`, real device emulation,
+  never reproduced live despite ~10 attempts:** Leo saw, via his own Chrome DevTools device
+  toolbar (iPhone 16 Pro Max, 440×956, screenshot saved as
+  `frontend/src/assets/overlapping cards.png`), that selecting the "Delivery" radio in
+  Fulfillment & Delivery left the structured address form visually garbled — every field label
+  and input on the left side of each row was cropped by a consistent left-side offset (e.g.
+  "House / Unit / Building No. *" showed as "...ilding No. *"), while the right column of the same
+  2-up rows (e.g. "City / Municipality") rendered completely intact. This reads as a partial/stale
+  repaint (old and new layout fragments visible at once) rather than a real CSS defect — a plain
+  overflow/too-narrow issue would clip text on the *right*, not the left, and a close read of
+  `checkout-page.component.ts`'s stylesheet found no transform, negative margin, or `overflow`
+  rule that could explain a left-side crop. Tried to reproduce via the claude-in-chrome automation
+  tab at 5 different widths (293px, 428px, 455px, ~1068px, and repeated attempts at both 440×956
+  and 393×852) — every single one rendered the Delivery form cleanly, no cropping, ever. Root
+  cause of *that* is itself now a documented tooling problem: `resize_window` is unreliable in
+  this session — it drifts to an unrequested actual `window.innerWidth` almost every call (seen:
+  666, 1076, 597, 876, 1612, 440(!), 1424, 428, 1974, 1346 — same tab, same requested size,
+  wildly different real results), and repeat calls on an already-navigated tab can get fully stuck
+  ignoring the resize entirely (seen stuck at 293×637, later at 1346×726, across both resize
+  timing orders — before-nav and after-nav). Never got a real device-emulation mode active either
+  (Ctrl+Shift+M keypress had no effect on `window.innerWidth`, unlike a real DevTools session).
+  Net effect: this specific report could not be confirmed or ruled out through automation — it's
+  logged on Leo's direct visual report alone. Next time this is picked up: ask Leo to hard-refresh
+  (Ctrl+Shift+R) on the same DevTools device-emulation view where he saw it and note whether the
+  cropping clears — that single test would confirm/deny the "transient repaint" theory directly
+  without needing working automation at all.
 
 ## [BUG] Customer Order Tracking Stepper Not Advancing (ORD-TRACK-089)
 

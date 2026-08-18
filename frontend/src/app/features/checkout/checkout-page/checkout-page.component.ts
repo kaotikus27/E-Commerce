@@ -13,11 +13,12 @@ import { NotificationService } from '../../../core/services/notification.service
 import { FulfillmentType, OrderRequest, PaymentMethod } from '../../../core/models/order.model';
 import { toAbsoluteImageUrl } from '../../../core/utils/image-url.util';
 import { DeliveryMapComponent } from '../delivery-map/delivery-map.component';
+import { PickupTimePickerComponent } from '../../cart/pickup-time-picker.component';
 
 @Component({
   selector: 'app-checkout-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, DeliveryMapComponent],
+  imports: [CommonModule, FormsModule, DeliveryMapComponent, PickupTimePickerComponent],
   template: `
     <section class="container checkout-page">
       <h1>Checkout</h1>
@@ -62,6 +63,12 @@ import { DeliveryMapComponent } from '../delivery-map/delivery-map.component';
                 <input type="radio" name="fulfillment" value="DELIVERY" [(ngModel)]="fulfillmentType" (ngModelChange)="onFulfillmentTypeChange()" />
                 Delivery
               </label>
+
+              <app-pickup-time-picker (timeSelected)="cart.setPickupTime($event)"></app-pickup-time-picker>
+              @if (store.leadTimeMinutes() > 0) {
+                <p class="prep-note">💡 Orders take ~{{ store.leadTimeMinutes() }} mins to prepare fresh.</p>
+              }
+
               @if (fulfillmentType === 'DELIVERY') {
                 <div class="delivery-box">
                   <div class="field">
@@ -310,6 +317,7 @@ import { DeliveryMapComponent } from '../delivery-map/delivery-map.component';
       .order-summary { position: sticky; top: 20px; }
     }
     .card, .step {
+      width: 100%; max-width: 100%; box-sizing: border-box;
       padding: 24px; margin-bottom: 16px; background: #FDFBF7; border: 1.5px solid #D4C3A3;
       border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
     }
@@ -330,6 +338,7 @@ import { DeliveryMapComponent } from '../delivery-map/delivery-map.component';
     .hint a { color: #2E4A3B; font-weight: 700; text-decoration: underline; }
     .payment-options { display: flex; flex-direction: column; gap: 8px; }
     .radio-row { display: flex; align-items: center; gap: 8px; font-weight: 600; min-height: 44px; color: #6F4E37; }
+    .prep-note { font-size: 12px; color: #6F4E37; background: #F0E4C8; padding: 8px 12px; border-radius: var(--radius-sm); margin: 4px 0 8px; }
     .gcash-box { background: #F0E4C8; border-radius: var(--radius-sm); padding: 16px; margin: 4px 0 8px; }
     .gcash-instructions { font-size: 13px; line-height: 1.5; margin: 0 0 10px; color: #6F4E37; }
     .gcash-qr { display: block; width: 180px; height: 180px; max-width: 100%; object-fit: contain; margin: 0 auto 12px; border-radius: var(--radius-sm); background: #fff; padding: 8px; border: 3px solid #6F4E37; }
@@ -337,7 +346,7 @@ import { DeliveryMapComponent } from '../delivery-map/delivery-map.component';
     .gcash-number { font-weight: 700; color: #2E4A3B; font-size: 15px; }
     .copy-btn {
       background: var(--color-white); border: 1.5px solid #6F4E37; color: #6F4E37;
-      border-radius: var(--radius-pill); padding: 4px 12px; font-size: 12px; font-weight: 700; min-height: 32px;
+      border-radius: var(--radius-pill); padding: 4px 12px; font-size: 12px; font-weight: 700; min-height: 44px;
     }
     .upload-zone {
       border: 1.5px dashed #D4C3A3; border-radius: var(--radius-md); padding: 20px; text-align: center;
@@ -349,14 +358,14 @@ import { DeliveryMapComponent } from '../delivery-map/delivery-map.component';
     .upload-confirm { font-size: 14px; font-weight: 700; color: #2E4A3B; margin: 0 0 2px; }
     .browse-btn { display: inline-flex; margin-top: 4px; cursor: pointer; }
     .upload-hint { font-size: 11px; color: var(--color-text-muted); margin: 8px 0 0; }
-    .delivery-box { background: #F0E4C8; border-radius: var(--radius-sm); padding: 16px; margin: 4px 0 8px; }
+    .delivery-box { width: 100%; max-width: 100%; box-sizing: border-box; background: #F0E4C8; border-radius: var(--radius-sm); padding: 16px; margin: 4px 0 8px; }
     .address-hint { display: block; font-size: 12px; color: #6F4E37; margin-top: 4px; }
     .delivery-error { margin-top: 8px; }
     .quote-btn { background: #D96B43; color: var(--color-white); border: none; margin-top: 4px; }
     .quote-btn:hover:not(:disabled) { background: #c15a35; }
     .candidates-box { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
     .candidates-hint { font-size: 13px; font-weight: 600; margin: 0; color: #6F4E37; }
-    .candidate-option { text-align: left; background: #fff; border: 1px solid #D4C3A3; border-radius: var(--radius-sm); padding: 10px 12px; font-size: 13px; cursor: pointer; }
+    .candidate-option { text-align: left; background: #fff; border: 1px solid #D4C3A3; border-radius: var(--radius-sm); padding: 10px 12px; font-size: 13px; cursor: pointer; min-height: 44px; display: flex; align-items: center; }
     .candidate-option:hover { border-color: #2E4A3B; }
     .quote-box { margin-top: 10px; font-size: 13px; line-height: 1.6; color: #6F4E37; }
     .quote-fee-badge {
@@ -375,10 +384,10 @@ import { DeliveryMapComponent } from '../delivery-map/delivery-map.component';
     .review-row.total { font-weight: 700; font-size: 16px; border-top: 1.5px dashed #6F4E37; margin-top: 8px; padding-top: 8px; color: #2E4A3B; }
     .discount-row { color: #D96B43; font-weight: 700; }
     .discount-row span:last-child { display: flex; align-items: center; gap: 8px; }
-    .promo-remove-btn { background: none; border: none; padding: 0; font-size: 11px; font-weight: 600; color: #6F4E37; text-decoration: underline; cursor: pointer; min-height: auto; }
+    .promo-remove-btn { background: none; border: none; padding: 0 2px; font-size: 11px; font-weight: 600; color: #6F4E37; text-decoration: underline; cursor: pointer; min-height: 44px; display: inline-flex; align-items: center; }
     .promo-box { margin: 10px 0; }
     .promo-input-row { display: flex; gap: 8px; }
-    .promo-input-row input { flex: 1; background: #FDFBF7; border: 1.5px solid #D4C3A3; border-radius: var(--radius-sm); padding: 8px 10px; font-size: 13px; }
+    .promo-input-row input { flex: 1; background: #FDFBF7; border: 1.5px solid #D4C3A3; border-radius: var(--radius-sm); padding: 10px 14px; font-size: 16px; min-height: 44px; }
     .promo-input-row .btn { flex-shrink: 0; }
     .error { color: var(--color-error); font-weight: 600; margin-bottom: 12px; }
     .field-error { color: var(--color-error); font-size: 12px; font-weight: 600; }
@@ -399,6 +408,10 @@ export class CheckoutPageComponent implements OnInit, OnDestroy {
 
   private static readonly PHONE_PATTERN = /^[\d\s()+-]{7,20}$/;
   private static readonly EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  /** Nudges values sitting exactly on a rounding boundary (e.g. 730 * 0.0875 === 63.87499999999999
+   *  in floating point, not 63.875) back onto the correct side before Math.round — otherwise these
+   *  estimates can round a cent below what the backend's exact decimal math actually charges. */
+  private static readonly ROUNDING_EPSILON = 1e-9;
 
   guestName = '';
   guestPhone = '';
@@ -470,7 +483,7 @@ export class CheckoutPageComponent implements OnInit, OnDestroy {
 
   readonly estimatedTax = computed(() => {
     const discountedSubtotal = Math.max(0, this.cart.subtotal() - this.appliedDiscount());
-    return Math.round(discountedSubtotal * 0.0875 * 100) / 100;
+    return Math.round(discountedSubtotal * 0.0875 * 100 + CheckoutPageComponent.ROUNDING_EPSILON) / 100;
   });
 
   readonly estimatedTotal = computed(() => {
@@ -480,7 +493,7 @@ export class CheckoutPageComponent implements OnInit, OnDestroy {
     const quoteFee = this.delivery.quote()?.feeTotal ?? 0;
     const deliveryFee = this.fulfillmentType === 'DELIVERY' ? quoteFee : 0;
     const discountedSubtotal = Math.max(0, this.cart.subtotal() - this.appliedDiscount());
-    return Math.round((discountedSubtotal + this.estimatedTax() + deliveryFee) * 100) / 100;
+    return Math.round((discountedSubtotal + this.estimatedTax() + deliveryFee) * 100 + CheckoutPageComponent.ROUNDING_EPSILON) / 100;
   });
 
   ngOnInit() {

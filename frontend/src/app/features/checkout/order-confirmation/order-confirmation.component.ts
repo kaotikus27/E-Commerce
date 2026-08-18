@@ -29,7 +29,7 @@ import { ChibiMascotComponent } from '../../../shared/components/chibi-mascot/ch
           }
 
           <div class="details">
-            <p><strong>Pickup Time:</strong> {{ order()!.pickupTime }}</p>
+            <p><strong>{{ order()!.fulfillmentType === 'DELIVERY' ? 'Ready by' : 'Pickup Time' }}:</strong> {{ order()!.pickupTime }}</p>
             <p><strong>Payment:</strong> {{ order()!.paymentMethod === 'GCASH_MANUAL' ? 'GCash' : 'Cash on Pickup' }}</p>
             @if (order()!.paymentStatus === 'PENDING_VERIFICATION') {
               <p class="pending-notice">We're verifying your GCash payment — you'll see this update once it's confirmed.</p>

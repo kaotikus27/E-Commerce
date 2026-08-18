@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, ElementRef, HostListener, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
@@ -39,6 +39,7 @@ import { CartService } from '../../../core/services/cart.service';
           <button class="icon-btn cart-btn" (click)="cart.toggleDrawer()" aria-label="Open cart">
             <img src="assets/shopping_cart.png" alt="" class="cart-icon" />
             <span class="count-badge" *ngIf="cart.itemCount() > 0">{{ cart.itemCount() }}</span>
+            <span class="fly-badge" *ngIf="showFlyBadge()">+1</span>
           </button>
         </div>
       </div>
@@ -67,6 +68,14 @@ import { CartService } from '../../../core/services/cart.service';
       font-size: 10px; font-weight: 700; border-radius: 50%; width: 16px; height: 16px;
       display: flex; align-items: center; justify-content: center;
     }
+    .fly-badge {
+      position: absolute; top: 0; right: -4px; color: var(--color-terracotta); font-size: 13px; font-weight: 700;
+      pointer-events: none; animation: fly-up-fade 0.9s ease-out forwards;
+    }
+    @keyframes fly-up-fade {
+      0% { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0; transform: translateY(-22px); }
+    }
     @media (min-width: 900px) {
       .menu-toggle { display: none; }
       .nav-links { display: flex; flex-direction: row; align-items: center; gap: 24px; width: auto; order: 0; flex: 1; margin-left: 32px; }
@@ -77,9 +86,36 @@ import { CartService } from '../../../core/services/cart.service';
 export class NavbarComponent {
   cart = inject(CartService);
   router = inject(Router);
+  private elementRef = inject(ElementRef);
 
   mobileOpen = signal(false);
   searchTerm = '';
+  showFlyBadge = signal(false);
+  private flyBadgeTimer?: ReturnType<typeof setTimeout>;
+
+  constructor() {
+    effect(() => {
+      if (this.cart.addedPulse() === 0) return; // skip the initial value, before any item was ever added
+      // All signal writes deferred via setTimeout — effects aren't allowed to write signals
+      // synchronously (NG0600), so this whole reset-then-show sequence runs outside the effect.
+      setTimeout(() => {
+        clearTimeout(this.flyBadgeTimer);
+        this.showFlyBadge.set(false);
+        // Re-triggers the CSS animation even on back-to-back adds, by forcing a DOM remove/re-add first.
+        setTimeout(() => {
+          this.showFlyBadge.set(true);
+          this.flyBadgeTimer = setTimeout(() => this.showFlyBadge.set(false), 900);
+        });
+      });
+    });
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent) {
+    if (this.mobileOpen() && !this.elementRef.nativeElement.contains(event.target)) {
+      this.mobileOpen.set(false);
+    }
+  }
 
   search() {
     this.mobileOpen.set(false);

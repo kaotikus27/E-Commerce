@@ -75,7 +75,12 @@ import { FaqAccordionComponent } from '../../shared/components/faq-accordion/faq
     <section class="container philosophy" id="philosophy">
       <span class="eyebrow philosophy-eyebrow">🌿 Our Philosophy 🌿</span>
       <div class="philosophy-grid">
-        <div class="philosophy-image-placeholder" aria-hidden="true"></div>
+        <!-- Temporary stock photo standing in until a real photo/illustration is provided. -->
+        <img
+          class="philosophy-image"
+          src="https://images.unsplash.com/photo-1554643897-cadcefdd6bfe?w=800"
+          alt="Baker tending a wood-fired hearth oven"
+        />
         <div class="philosophy-copy">
           <h2>Crafted by Hand, Blessed by the Forest</h2>
           <p>
@@ -100,16 +105,16 @@ import { FaqAccordionComponent } from '../../shared/components/faq-accordion/faq
 
     <section class="container featured" id="discover">
       <div class="featured-header">
-        <div>
-          <span class="eyebrow">Fresh From The Hearth</span>
-          <h2>What's Brewing Today</h2>
-        </div>
-        <a routerLink="/shop" class="btn btn-secondary">View Full Menu →</a>
+        <span class="eyebrow">Fresh From The Hearth</span>
+        <h2>What's Brewing Today</h2>
       </div>
       <div class="grid-responsive">
         @for (p of featured(); track p.id) {
           <app-product-card [product]="p" (open)="activeProduct.set($event)" (quickAddToCart)="quickAdd($event)"></app-product-card>
         }
+      </div>
+      <div class="featured-footer">
+        <a routerLink="/shop" class="btn btn-primary">Explore Full Menu →</a>
       </div>
     </section>
 
@@ -232,8 +237,12 @@ import { FaqAccordionComponent } from '../../shared/components/faq-accordion/faq
     }
 
     .hero-overlay {
+      display: none;
       position: absolute; left: 0; right: 0; bottom: 0; padding: 16px;
-      display: flex; align-items: flex-end; pointer-events: none;
+      align-items: flex-end; pointer-events: none;
+    }
+    @media (min-width: 640px) {
+      .hero-overlay { display: flex; }
     }
     .hero-info {
       background: rgba(30, 42, 36, 0.75); color: var(--color-canvas-oat);
@@ -245,16 +254,20 @@ import { FaqAccordionComponent } from '../../shared/components/faq-accordion/faq
       /* Lifted off the exact corner and shifted in to sit over the watermark. Per a screenshot
          check, a small sliver (~15-20px) of a gray triangular mark still peeked out just above
          the button's top edge — bumped up and made taller to close that last gap. */
+      display: none;
       position: absolute; right: 20px; bottom: 55px;
       background: var(--color-terracotta); color: var(--color-white); font-weight: 700;
       font-size: 15px; padding: 14px 26px; border-radius: var(--radius-md);
       white-space: nowrap; box-shadow: var(--shadow-elevated);
     }
     .hero-order-tag:hover { background: var(--color-terracotta-dark); }
+    @media (min-width: 640px) {
+      .hero-order-tag { display: block; }
+    }
 
     .eyebrow { color: var(--color-terracotta); font-weight: 700; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; }
 
-    .welcome { margin: 48px auto; max-width: 720px; text-align: center; }
+    .welcome { margin: 48px auto; text-align: center; }
     .welcome .eyebrow { display: block; margin-bottom: 12px; }
     .welcome h2 { margin: 0 0 16px; }
     .welcome-copy { color: var(--color-text-muted); line-height: 1.6; margin: 0 0 28px; }
@@ -263,8 +276,9 @@ import { FaqAccordionComponent } from '../../shared/components/faq-accordion/faq
     .philosophy { margin: 56px auto; }
     .philosophy-eyebrow { display: block; text-align: center; margin-bottom: 24px; }
     .philosophy-grid { display: grid; gap: 32px; align-items: center; }
-    .philosophy-image-placeholder {
-      aspect-ratio: 4/3; background: var(--color-subdued-pistachio); border-radius: var(--radius-lg);
+    .philosophy-image {
+      width: 100%; aspect-ratio: 4/3; object-fit: cover;
+      background: var(--color-subdued-pistachio); border-radius: var(--radius-lg); display: block;
     }
     .philosophy-copy h2 { margin: 0 0 16px; }
     .philosophy-copy p { color: var(--color-text-muted); line-height: 1.6; margin: 0 0 16px; }
@@ -277,12 +291,13 @@ import { FaqAccordionComponent } from '../../shared/components/faq-accordion/faq
     }
 
     .featured { margin: 48px auto 40px; }
-    .featured-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+    .featured-header { margin-bottom: 20px; }
     .featured-header .eyebrow { color: var(--color-terracotta); }
+    .featured-footer { display: flex; justify-content: center; margin-top: 28px; }
 
     .promo-eyebrow { display: block; text-align: center; margin: 56px auto 20px; }
     .promo {
-      max-width: 820px; margin: 0 auto 56px; padding: 48px 40px; border-radius: var(--radius-lg);
+      margin: 0 auto 56px; padding: 48px 40px; border-radius: var(--radius-lg);
       background: var(--color-sage-dark); color: var(--color-canvas-oat); text-align: center;
       box-shadow: var(--shadow-elevated);
     }
@@ -307,9 +322,9 @@ import { FaqAccordionComponent } from '../../shared/components/faq-accordion/faq
     cite { display: block; font-style: normal; font-weight: 700; color: var(--color-terracotta); font-size: 13px; }
     .quote-role { display: block; margin-top: 2px; font-weight: 600; color: var(--color-text-muted); font-size: 12px; text-transform: none; }
 
-    .faq-section { margin: 0 auto 56px; max-width: 720px; }
+    .faq-section { margin: 0 auto 56px; }
 
-    .visit { margin: 0 auto 56px; max-width: 640px; text-align: center; }
+    .visit { margin: 0 auto 56px; text-align: center; }
     .visit-eyebrow { display: block; margin-bottom: 8px; }
     .visit h2 { margin: 0 0 32px; }
     .visit-grid { display: grid; gap: 20px; text-align: left; }
@@ -355,7 +370,7 @@ export class HomePageComponent {
     this.cart.addItem(product, 1, []);
   }
 
-  onAdded(e: { product: Product; quantity: number; options: SelectedOption[] }) {
-    this.cart.addItem(e.product, e.quantity, e.options);
+  onAdded(e: { product: Product; quantity: number; options: SelectedOption[]; giftWrap: boolean }) {
+    this.cart.addItem(e.product, e.quantity, e.options, e.giftWrap);
   }
 }
