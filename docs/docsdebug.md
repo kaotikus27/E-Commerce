@@ -20,7 +20,7 @@ was found, and how (or whether) it was fixed.
 ## [BUG] Static info pages (About/Contact/FAQ/Terms) and the Shop product list render blank on first paint
 
 - **Opened:** 2026-08-15
-- **Status:** root-caused (partially), NOT fixed — deferred pending owner input
+- **Status:** ROOT-CAUSED AND FIXED (2026-08-19)
 - **Symptom:** Discovered during a full-site regression pass after the Ghibli home page redesign
   (unrelated to that work — see Investigation). Navigating to `/about`, `/contact`, `/faq`, or
   `/terms` (all rendered via the shared `InfoPageComponent`) shows the page shell (header, footer)
@@ -122,6 +122,36 @@ was found, and how (or whether) it was fixed.
   (Ctrl+Shift+R) on the same DevTools device-emulation view where he saw it and note whether the
   cropping clears — that single test would confirm/deny the "transient repaint" theory directly
   without needing working automation at all.
+- **2026-08-19 — root-caused and fixed.** Picked up the concrete next step flagged on 2026-08-18:
+  tested whether `app.config.ts`'s `provideZoneChangeDetection({ eventCoalescing: true })` was the
+  cause. Reproduced first via direct DOM/component inspection (not screenshots, per this project's
+  own established workaround for this tooling): navigated to `/contact` (rendered fine on a fresh
+  hard load), then dispatched a real `.click()` on the `routerLink="/about"` anchor — URL changed
+  to `/about`, but the routed `<app-about-page>` element's `innerHTML` stayed at 277 chars (just
+  the shell) while `ng.getComponent()` showed the component's bound `html` field was already the
+  full, correct 486-char string — confirming data-correct/DOM-stale exactly as previously
+  documented. Waited 1.5s+ with no forced tick — the DOM never self-healed, ruling out "just
+  delayed to the next coalesced flush" and confirming the CD pass is genuinely dropped, not merely
+  late. Set `eventCoalescing: false` and re-tested the identical repro (`/contact` → `.click()` on
+  `/about`, repeated across `/about`/`/contact`/`/shop`, plus a hard reload of `/faq`): every
+  navigation now painted immediately and correctly (`innerHTML` 826/6026/12728 chars as
+  appropriate), no manual `ng.applyChanges()` needed. Also re-tested the 2026-08-18 cart-drawer
+  case (signal flip with zero router/lazy-loading involvement) — `.drawer-backdrop` now appears
+  immediately on click. Both manifestations fixed by the same one-line change.
+  **Root cause:** `eventCoalescing: true` defers Angular's post-event change-detection flush to a
+  later animation-frame/microtask boundary instead of running it synchronously right after the
+  triggering event. When that event handler itself kicks off something async (a router navigation,
+  or — per the cart-drawer case — a signal write inside a zone task whose "stable" check resolves
+  before the coalesced flush is scheduled), the deferred flush can end up scheduled against the
+  wrong state and never fires for the actual DOM update, leaving it stuck until an unrelated zone
+  event (or a manually forced tick) happens to trigger the next real CD pass. This reproduced
+  reliably in both a real Chrome tab (native `.click()`, not synthetic coordinates) and survives a
+  hard reload, so it is a genuine, user-facing bug, not a dev-server/automation artifact.
+  **Fix:** `frontend/src/app/app.config.ts` — `eventCoalescing: true` → `false`. This reverts to
+  Angular's default (non-coalesced, synchronous) change-detection scheduling; the perf optimization
+  `eventCoalescing` provides is negligible at this app's scale next to shipping a working page.
+  Verified `ng build --configuration production` still succeeds clean (same pre-existing CSS-budget
+  warnings only, no new errors).
 
 ## [BUG] Customer Order Tracking Stepper Not Advancing (ORD-TRACK-089)
 
