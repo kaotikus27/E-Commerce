@@ -58,7 +58,7 @@ export interface OrderItemSummary {
  *  status lookup — see Order.publicToken on the backend. */
 export interface Order {
   id: string;
-  /** Unguessable tracking id — use this in order-confirmation/order-status URLs, never id. */
+  /** Unguessable tracking id — use this in order-status URLs, never id. */
   publicToken: string;
   status: OrderStatus;
   guestName?: string;
@@ -92,3 +92,10 @@ export interface Order {
 
 /** Admin order listing uses the exact same shape the backend returns. */
 export type AdminOrder = Order;
+
+/** "I lost my link" lookup — requires both fields together (never a bare order number alone,
+ *  since it's deliberately guessable — see the field's own doc comment on the backend). */
+export interface OrderLookupRequest {
+  orderNumber: string;
+  guestPhone: string;
+}

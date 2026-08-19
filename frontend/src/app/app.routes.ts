@@ -66,12 +66,12 @@ export const routes: Routes = [
     loadComponent: () => import('./features/checkout/checkout-page/checkout-page.component').then(m => m.CheckoutPageComponent),
   },
   {
-    path: 'order-confirmation/:id',
-    loadComponent: () => import('./features/checkout/order-confirmation/order-confirmation.component').then(m => m.OrderConfirmationComponent),
-  },
-  {
     path: 'order-status/:id',
     loadComponent: () => import('./features/order-status/order-status-page.component').then(m => m.OrderStatusPageComponent),
+  },
+  {
+    path: 'track-order',
+    loadComponent: () => import('./features/track-order/track-order-page.component').then(m => m.TrackOrderPageComponent),
   },
   {
     path: 'account',

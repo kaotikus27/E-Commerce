@@ -1,7 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import { catchError, of, tap } from 'rxjs';
 import { ApiService } from './api.service';
-import { Order, OrderItemRequest, OrderRequest } from '../models/order.model';
+import { Order, OrderItemRequest, OrderLookupRequest, OrderRequest } from '../models/order.model';
 
 /** Handles order payload submission and (stubbed) payment tokenization. */
 @Injectable({ providedIn: 'root' })
@@ -59,6 +59,15 @@ export class CheckoutService {
   getOrderStatus(publicToken: string) {
     return this.api.get<Order>(`/orders/${publicToken}`).pipe(
       catchError(() => of(this.lastOrder()))
+    );
+  }
+
+  /** "I lost my link" lookup — order number + phone together, never a bare order number (see
+   *  OrderLookupRequest). Deliberately no catchError: the caller needs to distinguish a 404
+   *  (no match) from a real network error, which a swallowed error would hide. */
+  lookupOrder(request: OrderLookupRequest) {
+    return this.api.post<Order>('/orders/lookup', request).pipe(
+      tap(order => this.lastOrder.set(order))
     );
   }
 }

@@ -31,6 +31,7 @@ import { RouterLink } from '@angular/router';
       <div class="container footer-bottom">
         <span class="copyright">© 2026 Home by Bami. All rights reserved.</span>
         <ul class="links">
+          <li><a routerLink="/track-order">Track Your Order</a></li>
           <li><a routerLink="/contact">Contact Us</a></li>
           <li><a routerLink="/terms">Terms &amp; Conditions</a></li>
         </ul>

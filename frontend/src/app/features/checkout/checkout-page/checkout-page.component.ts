@@ -11,6 +11,7 @@ import { DeliveryService } from '../../../core/services/delivery.service';
 import { GeocodeCandidate } from '../../../core/models/delivery.model';
 import { PromoCodeService } from '../../../core/services/promo-code.service';
 import { NotificationService } from '../../../core/services/notification.service';
+import { RecentOrdersService } from '../../../core/services/recent-orders.service';
 import { FulfillmentType, OrderRequest, PaymentMethod } from '../../../core/models/order.model';
 import { toAbsoluteImageUrl } from '../../../core/utils/image-url.util';
 import { DeliveryMapComponent } from '../delivery-map/delivery-map.component';
@@ -414,6 +415,7 @@ export class CheckoutPageComponent implements OnInit, OnDestroy {
   delivery = inject(DeliveryService);
   promo = inject(PromoCodeService);
   notifications = inject(NotificationService);
+  recentOrders = inject(RecentOrdersService);
   router = inject(Router);
 
   private static readonly PHONE_PATTERN = /^[\d\s()+-]{7,20}$/;
@@ -706,8 +708,9 @@ export class CheckoutPageComponent implements OnInit, OnDestroy {
         this.cart.clear();
         this.delivery.clear();
         this.promo.clear();
+        this.recentOrders.remember(order);
         this.notifications.success('Order placed!');
-        this.router.navigate(['/order-confirmation', order.publicToken]);
+        this.router.navigate(['/order-status', order.publicToken]);
         this.submitting.set(false);
       },
       error: (err: HttpErrorResponse) => {
