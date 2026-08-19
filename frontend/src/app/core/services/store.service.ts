@@ -49,12 +49,18 @@ export class StoreService {
   /** Resolves once the first store-info fetch attempt completes (success or failure), or after
    *  a 5s safety timeout. Guards/consumers that need a real `isOpen()` reading on a fresh page
    *  load should await this first — `isOpen()` defaults to `false` until the initial fetch
-   *  resolves, which otherwise reads as "closed" during that brief window. */
-  async ensureLoaded(): Promise<void> {
-    if (this.loadedOnce) return;
-    await new Promise<void>(resolve => {
+   *  resolves, which otherwise reads as "closed" during that brief window.
+   *
+   *  Returns whether the fetch actually completed (true) or the 5s safety timeout fired first
+   *  (false) — callers must not treat a `false` return as "confirmed closed". A slow/cold dev
+   *  server or a flaky connection can blow past 5s while the store is genuinely open; the only
+   *  thing a timeout tells you is "unknown", not "closed". placeOrder() enforces the real open/
+   *  closed check authoritatively server-side regardless, so callers can safely fail open here. */
+  async ensureLoaded(): Promise<boolean> {
+    if (this.loadedOnce) return true;
+    return new Promise<boolean>(resolve => {
       let settled = false;
-      const finish = () => { if (!settled) { settled = true; resolve(); } };
+      const finish = () => { if (!settled) { settled = true; resolve(this.loadedOnce); } };
       const check = () => { if (this.loadedOnce) finish(); else setTimeout(check, 50); };
       check();
       setTimeout(finish, 5000);
