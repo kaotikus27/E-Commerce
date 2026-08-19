@@ -10,8 +10,10 @@ import { nextOpenLabel } from '../../core/utils/next-open.util';
   template: `
     <div class="banner">
       <div class="container banner-row">
-        <span class="status" [class.open]="store.isOpen()" [class.closed]="!store.isOpen()">
-          @if (store.isOpen()) {
+        <span class="status" [class.open]="store.isOpen()" [class.closed]="store.loaded() && !store.isOpen()">
+          @if (!store.loaded()) {
+            ● Checking today's hours…
+          } @else if (store.isOpen()) {
             ● Open Now · Today {{ store.todayHoursLabel() }}
           } @else {
             ● Online ordering closed{{ nextOpen() ? ' — we re-open ' + nextOpen() : '' }}

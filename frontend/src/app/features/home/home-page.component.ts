@@ -178,7 +178,7 @@ import { FaqAccordionComponent } from '../../shared/components/faq-accordion/faq
           <span class="visit-icon">🕐</span>
           <div>
             <strong>Gathering Hours</strong>
-            <p>{{ store.isOpen() ? 'Open Now' : 'Closed Now' }} · Today {{ store.todayHoursLabel() }}</p>
+            <p>{{ store.loaded() ? (store.isOpen() ? 'Open Now' : 'Closed Now') : 'Loading…' }} · Today {{ store.todayHoursLabel() }}</p>
           </div>
         </div>
         <div class="visit-row">

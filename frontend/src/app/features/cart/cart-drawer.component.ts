@@ -67,11 +67,11 @@ import { toAbsoluteImageUrl } from '../../core/utils/image-url.util';
               <div class="summary-row total"><span>Grand Total</span><span>₱{{ cart.total().toFixed(2) }}</span></div>
             </div>
 
-            @if (!store.isOpen()) {
+            @if (store.loaded() && !store.isOpen()) {
               <p class="closed-banner">We're closed right now — checkout is unavailable until we re-open.</p>
             }
-            <button class="btn btn-primary btn-block" [disabled]="!store.isOpen()" (click)="goToCheckout()">
-              {{ store.isOpen() ? '🌿 Proceed to Checkout' : "We're Closed Right Now" }}
+            <button class="btn btn-primary btn-block" [disabled]="store.loaded() && !store.isOpen()" (click)="goToCheckout()">
+              {{ store.loaded() && !store.isOpen() ? "We're Closed Right Now" : '🌿 Proceed to Checkout' }}
             </button>
           }
         </aside>
