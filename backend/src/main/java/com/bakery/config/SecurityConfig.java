@@ -61,7 +61,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of(allowedOrigins.split(",")));
+        // Patterns (not setAllowedOrigins) so the wildcard subnet entry in app.cors.allowed-origins
+        // (for LAN/phone testing) actually matches - plain setAllowedOrigins only does exact string
+        // comparison. Patterns still match exact origins like http://localhost:4200 unchanged.
+        configuration.setAllowedOriginPatterns(List.of(allowedOrigins.split(",")));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

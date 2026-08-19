@@ -27,7 +27,7 @@ spring:
 
 app:
   cors:
-    allowed-origins: http://localhost:4200
+    allowed-origins: http://localhost:4200,http://192.168.100.*:4200
   jwt:
     secret: "bakery-dev-secret-key-change-me-before-production-0123456789"
     expiration-ms: 86400000
