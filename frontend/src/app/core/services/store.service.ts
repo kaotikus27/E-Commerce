@@ -16,7 +16,11 @@ export class StoreService {
   private api = inject(ApiService);
 
   private readonly info = signal<StoreInfo | null>(null);
-  private loadedOnce = false;
+  /** Public so components can distinguish "we don't have a real reading yet" from "confirmed
+   *  closed" — isOpen() defaults to false either way, which on its own looks identical to a
+   *  genuine closed store. See PickupTimePickerComponent for why that distinction matters. */
+  readonly loaded = signal(false);
+  private get loadedOnce() { return this.loaded(); }
 
   readonly name = computed(() => this.info()?.name ?? 'Home by Bami');
   readonly address = computed(() => this.info()?.address ?? '048 Kay Piskal Rd, Brgy. Tigbe, Norzagaray, Bulacan');
@@ -42,7 +46,7 @@ export class StoreService {
       catchError(() => of(null))
     ).subscribe(info => {
       if (info) this.info.set(info);
-      this.loadedOnce = true;
+      this.loaded.set(true);
     });
   }
 

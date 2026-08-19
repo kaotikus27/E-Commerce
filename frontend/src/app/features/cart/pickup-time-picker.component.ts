@@ -21,10 +21,12 @@ import { nextOpenLabel } from '../../core/utils/next-open.util';
             </button>
           }
         </div>
-      } @else {
+      } @else if (store.loaded()) {
         <p class="closed-notice">
           We're closed right now{{ nextOpen() ? ' — pickup opens ' + nextOpen() : '' }}. Please come back during our hours.
         </p>
+      } @else {
+        <p class="closed-notice">Checking today's hours…</p>
       }
     </div>
   `,
