@@ -26,4 +26,9 @@ public class OrderController {
     public OrderResponseDto getOrder(@PathVariable String publicToken) {
         return orderService.getOrderStatus(publicToken);
     }
+
+    @PostMapping("/lookup")
+    public OrderResponseDto lookupOrder(@Valid @RequestBody OrderLookupRequestDto request) {
+        return orderService.lookupOrder(request);
+    }
 }

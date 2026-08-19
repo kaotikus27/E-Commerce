@@ -195,6 +195,39 @@ public class OrderService {
         return OrderResponseDto.publicView(order);
     }
 
+    /** Public/unauthenticated "I lost my link" lookup for a guest who only has their order
+     *  number and phone (see OrderRateLimitFilter, which caps this alongside placeOrder() since
+     *  guessing orderNumber+phone pairs is exactly the brute-force surface that filter exists to
+     *  blunt). The order number alone is deliberately guessable (see the field's own doc comment
+     *  on Order), so it can never be a standalone lookup key — the phone match is what makes this
+     *  safe. A wrong order number and a wrong phone against a real order number both produce this
+     *  exact same 404, so a caller can never learn which half failed. */
+    public OrderResponseDto lookupOrder(OrderLookupRequestDto request) {
+        String normalizedOrderNumber = request.orderNumber().trim().toUpperCase();
+        Order order = orderRepository.findByOrderNumber(normalizedOrderNumber)
+                .filter(o -> phoneMatches(o.getGuestPhone(), request.guestPhone()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "No order found matching that order number and phone number."));
+        return OrderResponseDto.publicView(order);
+    }
+
+    /** Compares two PH phone numbers after normalizing both to E.164. Deliberately does NOT fall
+     *  back to comparing raw/normalized values when normalization fails on either side — if both
+     *  inputs failed to normalize, they'd both be null, and null.equals(null) would wrongly treat
+     *  two completely different invalid numbers as a match. The digits-only fallback below only
+     *  kicks in once at least one side didn't normalize, and even then requires an exact digit
+     *  match, not a null-to-null coincidence. */
+    private boolean phoneMatches(String stored, String submitted) {
+        String normStored = PhoneNumberUtil.toE164Philippines(stored);
+        String normSubmitted = PhoneNumberUtil.toE164Philippines(submitted);
+        if (normStored != null && normSubmitted != null) {
+            return normStored.equals(normSubmitted);
+        }
+        String storedDigits = PhoneNumberUtil.digitsOnly(stored);
+        String submittedDigits = PhoneNumberUtil.digitsOnly(submitted);
+        return !storedDigits.isBlank() && storedDigits.equals(submittedDigits);
+    }
+
     public List<OrderResponseDto> listAllOrders() {
         return orderRepository.findAllByOrderByCreatedAtDesc().stream().map(OrderResponseDto::from).toList();
     }
