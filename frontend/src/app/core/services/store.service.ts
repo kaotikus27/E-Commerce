@@ -16,11 +16,13 @@ export class StoreService {
   private api = inject(ApiService);
 
   private readonly info = signal<StoreInfo | null>(null);
-  /** Public so components can distinguish "we don't have a real reading yet" from "confirmed
-   *  closed" — isOpen() defaults to false either way, which on its own looks identical to a
-   *  genuine closed store. See PickupTimePickerComponent for why that distinction matters. */
-  readonly loaded = signal(false);
-  private get loadedOnce() { return this.loaded(); }
+  /** True only once a REAL response has arrived — deliberately not "an attempt finished",
+   *  success or failure. A failed fetch (network error, backend unreachable) must not flip this
+   *  to true, or every "confirmed closed" check below (`loaded() && !isOpen()`) would treat a
+   *  connectivity problem as a permanent, confident "closed" reading instead of "unknown" —
+   *  exactly the bug that made this look identical to a real closed store on a blocked network
+   *  path. Public so components can distinguish those two states themselves. */
+  readonly loaded = computed(() => this.info() !== null);
 
   readonly name = computed(() => this.info()?.name ?? 'Home by Bami');
   readonly address = computed(() => this.info()?.address ?? '048 Kay Piskal Rd, Brgy. Tigbe, Norzagaray, Bulacan');
@@ -46,26 +48,26 @@ export class StoreService {
       catchError(() => of(null))
     ).subscribe(info => {
       if (info) this.info.set(info);
-      this.loaded.set(true);
     });
   }
 
-  /** Resolves once the first store-info fetch attempt completes (success or failure), or after
-   *  a 5s safety timeout. Guards/consumers that need a real `isOpen()` reading on a fresh page
-   *  load should await this first — `isOpen()` defaults to `false` until the initial fetch
-   *  resolves, which otherwise reads as "closed" during that brief window.
+  /** Resolves once a real store-info response has arrived, or after a 5s safety timeout —
+   *  whichever comes first. Guards/consumers that need a real `isOpen()` reading on a fresh page
+   *  load should await this first — `isOpen()` defaults to `false` until real data arrives,
+   *  which otherwise reads as "closed" during that brief window.
    *
-   *  Returns whether the fetch actually completed (true) or the 5s safety timeout fired first
+   *  Returns whether real data actually arrived (true) or the 5s safety timeout fired first
    *  (false) — callers must not treat a `false` return as "confirmed closed". A slow/cold dev
-   *  server or a flaky connection can blow past 5s while the store is genuinely open; the only
-   *  thing a timeout tells you is "unknown", not "closed". placeOrder() enforces the real open/
-   *  closed check authoritatively server-side regardless, so callers can safely fail open here. */
+   *  server, a flaky connection, or the backend being genuinely unreachable can all blow past 5s
+   *  while the store is actually open; the only thing a timeout tells you is "unknown", not
+   *  "closed". placeOrder() enforces the real open/closed check authoritatively server-side
+   *  regardless, so callers can safely fail open here. */
   async ensureLoaded(): Promise<boolean> {
-    if (this.loadedOnce) return true;
+    if (this.loaded()) return true;
     return new Promise<boolean>(resolve => {
       let settled = false;
-      const finish = () => { if (!settled) { settled = true; resolve(this.loadedOnce); } };
-      const check = () => { if (this.loadedOnce) finish(); else setTimeout(check, 50); };
+      const finish = () => { if (!settled) { settled = true; resolve(this.loaded()); } };
+      const check = () => { if (this.loaded()) finish(); else setTimeout(check, 50); };
       check();
       setTimeout(finish, 5000);
     });
