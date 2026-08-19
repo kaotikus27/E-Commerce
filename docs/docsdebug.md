@@ -404,3 +404,70 @@ it, and watched `ORD-115748` update live in the UI — `ASSIGNING_DRIVER → ON_
 info populated, and "Mark Ready" flipped from disabled (with its "waiting for driver" hint) to
 enabled, since `canMarkReady()` reads the same `deliveryStatus`/`driverName` fields. No console
 errors. Status: **closed** — both the code path and its UI are now built and verified.
+
+## [BUG, OPEN] Delivery quote fails on a real iPhone over LAN, but succeeds everywhere else tested
+
+- **Opened:** 2026-08-19
+- **Status:** NOT resolved — paused pending further live capture from the actual device
+- **Symptom:** On checkout's Fulfillment & Delivery section, tapping "Find My Location & Get
+  Delivery Quote" on a real iPhone (Chrome/CriOS, connected to the LAN dev environment at
+  `http://192.168.100.213:4200`) always shows the generic fallback error "Could not get a
+  delivery quote for that address" — reproduced with both a manually-typed structured address and
+  a pasted Google Maps link, with fresh page loads and cleared cache each time. This was
+  investigated *after* Open Issue "store closed" (see the dated entries above/in `handoff.md` for
+  2026-08-19) was already fixed and confirmed working on the same phone, so this is a separate bug.
+- **What's been ruled out, with evidence:**
+  - **Not CORS** — a real POST preflight (`Access-Control-Request-Method: POST`, `content-type`
+    header) from the phone's exact origin returns a correct `Access-Control-Allow-Origin` echo.
+  - **Not the firewall** — rules for 4200/8080 (and later 8888 for a debug proxy) are enabled for
+    the `Any` profile, confirmed via `Get-NetFirewallRule`, and the PC's Ethernet is on the
+    `Public` network category, which `Any` already covers.
+  - **Not the backend/network path in general** — firing the *exact* same POST (same address text,
+    same Google Maps link) via `fetch()` from a browser on the same LAN URL returns a real `200`
+    with a real quote every time, including through a purpose-built debug proxy (see below).
+  - **Not a client-side validation/disabled-button issue** — exercising the actual
+    `checkout-page.component.ts` code path (setting `deliveryMapsLink` via a real `input` event,
+    clicking the real `.quote-btn` element) on a PC browser at the same LAN URL also succeeds
+    (`delivery.quote()` populated, `delivery.error()` empty).
+- **Key unresolved finding:** built `frontend/scripts/mobile-debug-proxy.js` (a scoped forward
+  proxy + PAC config, only proxies traffic to the dev host, logs full request/response) so the
+  phone's *real* traffic could be inspected directly, since every automation-driven test above
+  runs from this PC and therefore proves nothing about the phone's actual network behavior.
+  Confirmed live: the phone's page-shell/asset requests (JS chunks, CSS, images) *do* flow through
+  the proxy correctly once Manual (not Automatic/PAC — PAC never actually applied on iOS despite
+  being configured) proxy mode was set. But across multiple real attempts, **no `/api/v1/*`
+  request from the phone — not `/store`, not `/delivery/quote` — ever appeared in the proxy log**,
+  even though the app visibly has correct-looking store data (which may just be a stale, already-
+  loaded signal value from before the proxy was configured — `StoreService.poll()` never clears
+  `info` on a failed fetch, so a real ongoing backend outage would be invisible in the UI while the
+  polling interval quietly fails every 20s in the background). Added CONNECT-tunnel logging to the
+  debug proxy to test the leading theory (the phone silently upgrading `http://` calls to
+  `https://`, which port 8080 has no listener for, and which this proxy can't tunnel since it has
+  no TLS cert) — only ever saw irrelevant OS-level CONNECT traffic (Weather, iCloud, Google
+  account sync, Viber) in the several attempts captured, never one aimed at
+  `192.168.100.213:8080`. Session was paused before a `/api/v1/*` call from the phone was ever
+  actually captured live through the proxy — **the actual request/response (or absence of one)
+  was never directly observed**, so the HTTPS-upgrade theory is unconfirmed, not ruled out.
+- **Next steps when resumed:**
+  1. Confirm the debug proxy (`node scripts/mobile-debug-proxy.js`, port 8888) and both dev servers
+     are still running; restart if needed (`npm run start:lan` for frontend, `mvnw spring-boot:run`
+     for backend — see `handoff.md` for the gotcha that the backend does not hot-reload).
+  2. On the phone: Settings → Wi-Fi → configure proxy → Manual → Server `192.168.100.213`, Port
+     `8888` (Automatic/PAC did not reliably apply on this device — go straight to Manual).
+  3. Reload the page fresh, navigate to checkout, switch to Delivery, and attempt a quote —
+     while watching the proxy's log (`tail -f` the task's output file, or re-run via Monitor)
+     filtered to lines containing `192.168.100.213`, so real app traffic isn't lost in unrelated
+     iOS/Google/Viber background noise.
+  4. If a plain CONNECT to `192.168.100.213:8080` shows up — HTTPS-upgrade theory confirmed; fix is
+     either disabling the phone's "Always Use Secure Connections"/HTTPS-Only browser setting for
+     this test, or (more robustly) getting a real cert for the dev environment.
+  5. If a real REQUEST/RESPONSE pair shows up with an actual error — that tells us the real failure
+     mode directly instead of guessing further.
+  6. If literally nothing shows up at all even after a confirmed-successful checkout-page load —
+     suspect the manual proxy config itself isn't actually intercepting traffic bound for port 8080
+     specifically (as opposed to 4200, already confirmed working) — worth testing by hitting
+     `http://192.168.100.213:8080/api/v1/store` directly in the phone's address bar as a plain
+     top-level navigation and seeing whether *that* shows up in the proxy log.
+  7. **Reminder for whoever resumes this**: the phone's proxy must be set back to Off when not
+     actively debugging — Manual mode routes all HTTPS traffic through this HTTP-only debug proxy,
+     which breaks other apps on the device.
